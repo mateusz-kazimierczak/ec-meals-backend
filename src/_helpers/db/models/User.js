@@ -13,10 +13,11 @@ const schema = new Schema(
       default: "student",
       enum: ["student", "admin", "numerary"],
     },
+    email: { type: String, required: false },
     active: { type: Boolean, default: true },
     room: { type: Number, required: false },
     meals: { type: Object, required: true },
-    preferences: { type: Object, required: false },
+    preferences: { type: Object, default: {} },
   },
   {
     // add createdAt and updatedAt timestamps

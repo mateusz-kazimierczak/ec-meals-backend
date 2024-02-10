@@ -5,6 +5,8 @@ import bcrypt from "bcryptjs";
 import { NextResponse } from "next/server";
 import initUser from "@/_helpers/db/initUser";
 
+import { sendWelcomeEmail } from "@/_helpers/emails";
+
 const buildUser = async (ujson) => {
   console.log(ujson);
   const user = {
@@ -99,7 +101,14 @@ export async function POST(req, res) {
 
   initUser(user);
 
-  await User.create(user);
+  console.log(data);
+
+  let emailPromise = Promise.resolve();
+  if (sendWelcomeEmail && user.email) {
+    emailPromise = sendWelcomeEmail(user, data.password);
+  }
+
+  await Promise.all([User.create(user), emailPromise]);
 
   return Response.json({ success: true });
 }

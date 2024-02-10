@@ -22,7 +22,6 @@ export async function POST(req, res) {
 
   const data = await req.json();
 
-  console.log(data);
   // Do some validation here
   const user = await User.findOne({ username: data.username })
     .select("hash username active role")
@@ -51,7 +50,7 @@ export async function POST(req, res) {
       role: user.role,
     },
     process.env.JWT_SECRET,
-    { expiresIn: "10h" }
+    { expiresIn: "30d" }
   );
 
   console.log("success login");

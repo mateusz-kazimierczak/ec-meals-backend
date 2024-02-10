@@ -30,29 +30,31 @@ export default async function middleware(req, res) {
 
   let token = req.headers.get("Authorization"); // get token from header (this is currently logged in user)
 
-  const user = await jose
-    .jwtVerify(token, new TextEncoder().encode(process.env.JWT_SECRET))
-    .catch((err) => {
-      console.log("token error", err);
-      return invalidAuthRes;
-    });
+  try {
+    const user = await jose.jwtVerify(
+      token,
+      new TextEncoder().encode(process.env.JWT_SECRET)
+    );
+    const response = NextResponse.next();
+    response.headers.append("userID", user.payload.id);
+    response.headers.append("userRole", user.payload.role);
 
-  const response = NextResponse.next();
-  response.headers.append("userID", user.payload.id);
-  response.headers.append("userRole", user.payload.role);
-
-  if (adminOnly.includes(req.nextUrl.pathname)) {
-    if (user.payload.role == "admin") return response;
-    else {
-      return invalidAuthRes;
+    if (adminOnly.includes(req.nextUrl.pathname)) {
+      if (user.payload.role == "admin") return response;
+      else {
+        return invalidAuthRes;
+      }
     }
+    return response;
+  } catch (err) {
+    return invalidAuthRes;
   }
-
-  return response;
 }
 
 const adminOnly = ["/api/users/all"];
-const authOnly = ["/api/users/single", "/api/meals"];
-
-// to do
-// - auth and admin only routes
+const authOnly = [
+  "/api/users/single",
+  "/api/meals",
+  "/api/preferences",
+  "/api/home",
+];
