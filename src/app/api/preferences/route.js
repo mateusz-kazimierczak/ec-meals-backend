@@ -28,3 +28,6 @@ export async function POST(req, res) {
     message: "OK",
   });
 }
+
+// forces the route handler to be dynamic
+export const dynamic = "force-dynamic";

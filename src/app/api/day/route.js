@@ -193,3 +193,6 @@ const constructMealUserObject = (user) => {
 };
 
 const MEALS = ["Breakfast", "Lunch", "Dinner", "P1", "P2", "PS"];
+
+// forces the route handler to be dynamic
+export const dynamic = "force-dynamic";

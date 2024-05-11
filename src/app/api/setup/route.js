@@ -6,3 +6,6 @@ export async function GET() {
 
   return Response.json({ message: "Admin created!", users });
 }
+
+// forces the route handler to be dynamic
+export const dynamic = "force-dynamic";

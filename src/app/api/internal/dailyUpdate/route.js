@@ -167,3 +167,6 @@ const MealCategories = [
   "No Meals",
   "Unmarked",
 ];
+
+// forces the route handler to be dynamic
+export const dynamic = "force-dynamic";

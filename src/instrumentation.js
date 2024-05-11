@@ -6,3 +6,6 @@ export async function register() {
     await import("./_helpers/db/initAdmin");
   }
 }
+
+// forces the route handler to be dynamic
+export const dynamic = "force-dynamic";

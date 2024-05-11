@@ -128,3 +128,6 @@ export async function POST(req, res) {
 
   return Response.json({ success: true, new: "yes" });
 }
+
+// forces the route handler to be dynamic
+export const dynamic = "force-dynamic";

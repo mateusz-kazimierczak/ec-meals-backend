@@ -84,3 +84,6 @@ export async function POST(req, res) {
     updateTime: getNextUpdateTime(),
   });
 }
+
+// forces the route handler to be dynamic
+export const dynamic = "force-dynamic";

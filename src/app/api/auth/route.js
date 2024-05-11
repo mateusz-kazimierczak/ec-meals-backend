@@ -69,3 +69,6 @@ export async function PUT(req, res) {
   const data = registerUserSchema.validate(Object.fromEntries(formData));
   console.log(data);
 }
+
+// forces the route handler to be dynamic
+export const dynamic = "force-dynamic";
