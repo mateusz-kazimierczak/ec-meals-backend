@@ -6,6 +6,7 @@ import { NextResponse } from "next/server";
 import initUser from "@/_helpers/db/initUser";
 
 import { sendWelcomeEmail } from "@/_helpers/emails";
+import { Types } from "mongoose";
 
 const buildUser = async (ujson) => {
   console.log(ujson);
@@ -18,6 +19,7 @@ const buildUser = async (ujson) => {
     role: ujson.role,
     active: ujson.active,
     guest: ujson.guest,
+    diet: ujson.diet || null,
   };
 
   if (ujson.password) {
@@ -62,6 +64,8 @@ export async function PATCH(req, res) {
 
   const user = await buildUser(data);
 
+  console.log("new user data", user.diet);
+
   await User.findOneAndUpdate({ _id: user_id }, user).catch((err) => {
     console.log(err);
   });
@@ -103,12 +107,24 @@ export async function POST(req, res) {
 
   console.log(data);
 
-  let emailPromise = Promise.resolve();
-  if (sendWelcomeEmail && user.email) {
-    emailPromise = sendWelcomeEmail(user, data.password);
+  try {
+    await User.create(user);
+  } catch (err) {
+    console.log("error while creatiunbg user: ", err);
+    return new Response(
+      { success: false },
+      {
+        status: 500,
+      }
+    );
   }
 
-  await Promise.all([User.create(user), emailPromise]);
+  if (data.email && data.sendWelcomeEmail) {
+    sendWelcomeEmail(
+      { email: data.email, firstName: data.firstName, username: data.username },
+      data.password
+    );
+  }
 
-  return Response.json({ success: true });
+  return Response.json({ success: true, new: "yes" });
 }

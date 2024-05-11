@@ -32,7 +32,7 @@ export async function GET() {
   const [users, days] = await Promise.all([
     User.find(
       { active: true },
-      "name meals preferences email firstName lastName"
+      "name meals preferences email firstName lastName diet"
     ),
     Day.find({ date: { $in: [TodayString, TomorrowString] } }),
   ]);
@@ -61,30 +61,21 @@ export async function GET() {
 
   users.forEach((user) => {
     if (user.meals[dayIndex][6]) {
-      return noMeals.push({
-        name: user.firstName + " " + user.lastName,
-        _id: user._id,
-      });
+      return noMeals.push(constructMealUserObject(user));
     }
 
     // Check every user
     user.meals[dayIndex].slice(0, 3).forEach((meal, index) => {
       // Check every meal on that day (not packed meals)
       if (meal) {
-        meals[index].push({
-          name: user.firstName + " " + user.lastName,
-          _id: user._id,
-        });
+        meals[index].push(constructMealUserObject(user));
       }
     });
 
     user.meals[nextDayIndex].slice(3, 6).forEach((meal, index) => {
       // Check every packed meal on that day
       if (meal) {
-        packedMeals[index].push({
-          name: user.firstName + " " + user.lastName,
-          _id: user._id,
-        });
+        packedMeals[index].push(constructMealUserObject(user));
       }
     });
 
@@ -108,10 +99,7 @@ export async function GET() {
     }
 
     if (!markedToday) {
-      unmarked.push({
-        name: user.firstName + " " + user.lastName,
-        _id: user._id,
-      });
+      unmarked.push(constructMealUserObject(user));
     }
 
     if (
@@ -141,6 +129,14 @@ export async function GET() {
     message: "OK",
   });
 }
+
+const constructMealUserObject = (user) => {
+  return {
+    name: user.firstName + " " + user.lastName,
+    _id: user._id,
+    diet: user.diet,
+  };
+};
 
 const UpdateDateTooFar = () => {
   const today = new Date();

@@ -23,9 +23,18 @@ const getNextUpdateTime = () => {
 export async function GET(req, res) {
   await connectDB();
 
-  const ID = req.headers.get("userID");
+  const ROLE = req.headers.get("userRole");
+  let forUser = req.headers.get("forUser");
 
-  const data = await User.findById(ID, "meals");
+  if (forUser == "undefined" || !forUser) {
+    forUser = req.headers.get("userID");
+  } else if (ROLE != "admin") {
+    return Response.json({ message: "Unauthorized" }, { status: 403 });
+  }
+
+  console.log(forUser);
+
+  const data = await User.findById(forUser, "meals firstName");
 
   let disabledDay;
 
@@ -47,6 +56,7 @@ export async function GET(req, res) {
 
   return Response.json({
     meals: data.meals,
+    firstName: data.firstName,
     currTime: new Date(),
     updateTime: getNextUpdateTime(),
     disabledDay,
@@ -56,11 +66,18 @@ export async function GET(req, res) {
 export async function POST(req, res) {
   await connectDB();
 
-  const ID = req.headers.get("userID");
+  let forUser = req.headers.get("forUser");
+  const ROLE = req.headers.get("userRole");
+
+  if (forUser == "undefined" || !forUser) {
+    forUser = req.headers.get("userID");
+  } else if (ROLE != "admin") {
+    return Response.json({ message: "Unauthorized" }, { status: 403 });
+  }
 
   const data = await req.json();
 
-  const user = await User.findByIdAndUpdate(ID, { meals: data.meals });
+  const user = await User.findByIdAndUpdate(forUser, { meals: data.meals });
 
   return Response.json({
     currTime: new Date(),

@@ -18,6 +18,7 @@ const schema = new Schema(
     room: { type: Number, required: false },
     meals: { type: Object, required: true },
     preferences: { type: Object, default: {} },
+    diet: { type: String, required: false },
   },
   {
     // add createdAt and updatedAt timestamps

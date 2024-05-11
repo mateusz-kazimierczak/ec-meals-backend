@@ -14,10 +14,14 @@ import { registerUserSchema } from "./schemas";
 
 // Login handler
 export async function POST(req, res) {
-  await connectDB();
-
   if (req.method === "OPTIONS") {
     return res.status(200).send("ok");
+  }
+
+  try {
+    await connectDB();
+  } catch (e) {
+    return NextResponse.json({ error: e.message }, { status: 500 });
   }
 
   const data = await req.json();
@@ -30,10 +34,11 @@ export async function POST(req, res) {
       return NextResponse.json({ error: "user not found" }, { status: 404 });
     });
 
+  if (!user) return NextResponse.json({ code: "noUser" }, { status: 200 });
+
   const pass = await bcrypt.compare(data.password, user.hash);
 
-  if (!pass)
-    return NextResponse.json({ error: "Incorrect password" }, { status: 401 });
+  if (!pass) return NextResponse.json({ code: "badPass" }, { status: 200 });
 
   if (user.active === false) {
     return NextResponse.json(
