@@ -32,12 +32,6 @@ export async function GET(req, res) {
     return Response.json({ message: "Unauthorized" }, { status: 403 });
   }
 
-  console.log(forUser);
-
-  const data = await User.findById(forUser, "meals firstName");
-
-  let disabledDay;
-
   const updateTimeToday = new Date();
   updateTimeToday.setHours(
     parseInt(process.env.UPDATE_TIME.slice(0, 2)),
@@ -46,6 +40,8 @@ export async function GET(req, res) {
     0
   );
 
+  let disabledDay;
+
   if (Date.now > updateTimeToday) {
     disabledDay = new Date().getDay();
   } else {
@@ -53,6 +49,8 @@ export async function GET(req, res) {
   }
 
   if (disabledDay < 0) disabledDay = 6;
+
+  const data = await User.findById(forUser, "meals firstName");
 
   return Response.json({
     meals: data.meals,
