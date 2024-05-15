@@ -1,4 +1,4 @@
-const SITE_URL = process.env.SITE_URL || "https://www.ernescliff.ca";
+const SITE_URL = process.env.SITE_URL || "https://mateusz-alicante.github.io/ec-meals-app/";
 
 import { MEAL_LIST } from "../src/_helpers/CONST";
 
