@@ -9,7 +9,7 @@ const getNextUpdateTime = () => {
   const timezoneOffset = new Date().getTimezoneOffset();
 
   const nextUpdateHour =
-    parseInt(process.env.UPDATE_TIME.slice(0, 2)) + timezoneOffset / 60 - 4; // 4 is the offset for EST
+    parseInt(process.env.UPDATE_TIME.slice(0, 2)) + timezoneOffset / 60 + 4; // 4 is the offset for EST
 
   if (nextUpdateHour < 0) {
     nextUpdateTime.setHours(
