@@ -1,38 +1,35 @@
 import connectDB from "@/_helpers/db/connect";
 import User from "@/_helpers/db/models/User";
-import { get } from "http";
 
 const getNextUpdateTime = () => {
+  // Get the time until the next update, and the index of the day that should be disabled
   const currTime = new Date();
   const nextUpdateTime = new Date();
-
-  const timezoneOffset = new Date().getTimezoneOffset();
+  let disabledDay;
 
   const nextUpdateHour =
-    parseInt(process.env.UPDATE_TIME.slice(0, 2)) + timezoneOffset / 60 + 4; // 4 is the offset for EST
+    parseInt(process.env.UPDATE_TIME.slice(0, 2)) -
+    currTime.getTimezoneOffset() / 60 +
+    4;
 
-  if (nextUpdateHour < 0) {
-    nextUpdateTime.setHours(
-      24 + nextUpdateHour,
-      parseInt(process.env.UPDATE_TIME.slice(2)),
-      0,
-      0
-    );
-  } else {
-    nextUpdateTime.setHours(
-      parseInt(nextUpdateHour), // 4 is the offset for EST
-      parseInt(process.env.UPDATE_TIME.slice(2)),
-      0,
-      0
-    );
-    nextUpdateTime.setDate(nextUpdateTime.getDate() + 1);
-  }
+  nextUpdateTime.setHours(
+    nextUpdateHour,
+    parseInt(process.env.UPDATE_TIME.slice(2)),
+    0,
+    0
+  );
 
   if (currTime - nextUpdateTime > 0) {
     nextUpdateTime.setDate(nextUpdateTime.getDate() + 1);
+    disabledDay = new Date().getDay() - 1;
+  } else {
+    disabledDay = new Date().getDay() - 2;
   }
 
-  return nextUpdateTime.getTime();
+  if (disabledDay == -1) disabledDay = 6;
+  else if (disabledDay == -2) disabledDay = 5;
+
+  return [nextUpdateTime.getTime(), disabledDay];
 };
 
 export async function GET(req, res) {
@@ -47,31 +44,17 @@ export async function GET(req, res) {
     return Response.json({ message: "Unauthorized" }, { status: 403 });
   }
 
-  const updateTimeToday = new Date();
-  updateTimeToday.setHours(
-    parseInt(process.env.UPDATE_TIME.slice(0, 2)),
-    parseInt(process.env.UPDATE_TIME.slice(2)),
-    0,
-    0
-  );
-
-  let disabledDay;
-
-  if (Date.now > updateTimeToday) {
-    disabledDay = new Date().getDay();
-  } else {
-    disabledDay = new Date().getDay() - 1;
-  }
-
-  if (disabledDay < 0) disabledDay = 6;
+  console.log("get meals route");
 
   const data = await User.findById(forUser, "meals firstName");
+
+  const [updateTime, disabledDay] = getNextUpdateTime();
 
   return Response.json({
     meals: data.meals,
     firstName: data.firstName,
     currTime: new Date(),
-    updateTime: getNextUpdateTime(),
+    updateTime: updateTime,
     disabledDay,
   });
 }
