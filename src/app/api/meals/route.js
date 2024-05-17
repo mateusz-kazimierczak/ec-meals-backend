@@ -85,6 +85,8 @@ export async function GET(req, res) {
 export async function POST(req, res) {
   await connectDB();
 
+  const cookies = cookies(); // Get the cookies from the request to prevent caching
+
   let forUser = req.headers.get("forUser");
   const ROLE = req.headers.get("userRole");
 
