@@ -1,5 +1,6 @@
 import connectDB from "@/_helpers/db/connect";
 import User from "@/_helpers/db/models/User";
+import { cookies } from "next/headers";
 
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
@@ -50,6 +51,8 @@ const getNextUpdateTime = () => {
 
 export async function GET(req, res) {
   await connectDB();
+
+  const cookies = cookies(); // Get the cookies from the request to prevent caching
 
   const ROLE = req.headers.get("userRole");
   let forUser = req.headers.get("forUser");
