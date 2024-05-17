@@ -8,7 +8,7 @@ const getNextUpdateTime = () => {
   const desiredOffset = -4; // The desired timezone offset
 
   // Calculate the difference between the current timezone offset and the desired timezone offset
-  const offsetDifference = -timezoneOffsetHours + desiredOffset;
+  const offsetDifference = timezoneOffsetHours - desiredOffset;
 
   // Create a new Date object with the adjusted time
   const currTime = new Date(
@@ -40,6 +40,8 @@ const getNextUpdateTime = () => {
   if (disabledDay == -1) disabledDay = 6;
   else if (disabledDay == -2) disabledDay = 5;
 
+  console.log("Next update time: ", nextUpdateTime);
+
   return [nextUpdateTime.getTime(), disabledDay];
 };
 
@@ -58,6 +60,10 @@ export async function GET(req, res) {
   console.log("get meals route");
 
   const data = await User.findById(forUser, "meals firstName");
+
+  if (!data) {
+    return Response.json({ message: "User not found" }, { status: 404 });
+  }
 
   const [updateTime, disabledDay] = getNextUpdateTime();
 
