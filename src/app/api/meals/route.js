@@ -1,6 +1,9 @@
 import connectDB from "@/_helpers/db/connect";
 import User from "@/_helpers/db/models/User";
 
+export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
+
 const getNextUpdateTime = () => {
   // Get the time until the next update, and the index of the day that should be disabled
   const currentStandardTime = new Date();
@@ -99,6 +102,3 @@ export async function POST(req, res) {
     updateTime: getNextUpdateTime(),
   });
 }
-
-// forces the route handler to be dynamic
-export const dynamic = "force-dynamic";
