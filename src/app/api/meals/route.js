@@ -50,6 +50,10 @@ const getNextUpdateTime = () => {
 };
 
 export async function GET(req, res) {
+  if (!process.env.MONGODB_URI) {
+    return new Response("OK");
+  }
+
   await connectDB();
 
   const cookies = cookies(); // Get the cookies from the request to prevent caching
@@ -84,8 +88,6 @@ export async function GET(req, res) {
 
 export async function POST(req, res) {
   await connectDB();
-
-  const cookies = cookies(); // Get the cookies from the request to prevent caching
 
   let forUser = req.headers.get("forUser");
   const ROLE = req.headers.get("userRole");
