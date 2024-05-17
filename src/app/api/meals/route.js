@@ -3,7 +3,18 @@ import User from "@/_helpers/db/models/User";
 
 const getNextUpdateTime = () => {
   // Get the time until the next update, and the index of the day that should be disabled
-  const currTime = new Date();
+  const currentStandardTime = new Date();
+  const timezoneOffsetHours = currentStandardTime.getTimezoneOffset() / 60;
+  const desiredOffset = -4; // The desired timezone offset
+
+  // Calculate the difference between the current timezone offset and the desired timezone offset
+  const offsetDifference = timezoneOffsetHours - desiredOffset;
+
+  // Create a new Date object with the adjusted time
+  const currTime = new Date(
+    currentStandardTime.getTime() - offsetDifference * 60 * 60 * 1000
+  );
+
   const nextUpdateTime = new Date();
   let disabledDay;
 
