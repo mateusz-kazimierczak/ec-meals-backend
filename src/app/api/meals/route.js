@@ -8,7 +8,7 @@ const getNextUpdateTime = () => {
   const desiredOffset = -4; // The desired timezone offset
 
   // Calculate the difference between the current timezone offset and the desired timezone offset
-  const offsetDifference = timezoneOffsetHours - desiredOffset;
+  const offsetDifference = -timezoneOffsetHours + desiredOffset;
 
   // Create a new Date object with the adjusted time
   const currTime = new Date(
