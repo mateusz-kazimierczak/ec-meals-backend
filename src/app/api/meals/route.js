@@ -50,10 +50,6 @@ const getNextUpdateTime = () => {
 };
 
 export async function GET(req, res) {
-  if (!process.env.MONGODB_URI) {
-    return new Response("OK");
-  }
-
   await connectDB();
 
   const cookies = cookies(); // Get the cookies from the request to prevent caching

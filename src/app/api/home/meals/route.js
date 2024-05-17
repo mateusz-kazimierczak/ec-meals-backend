@@ -2,6 +2,9 @@ import connectDB from "@/_helpers/db/connect";
 import User from "@/_helpers/db/models/User";
 import Day from "@/_helpers/db/models/Day";
 
+export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
+
 export async function GET(req, res) {
   await connectDB();
 
@@ -30,10 +33,6 @@ export async function GET(req, res) {
     User.findById(forUser, "meals firstName"),
     Day.findOne({ date: todayString }, "meals packedMeals"),
   ]);
-
-  console.log("user: ", thisUser);
-
-  console.log("day: ", today);
 
   const nextDay = new Date();
   nextDay.setDate(nextDay.getDate() + 1);
