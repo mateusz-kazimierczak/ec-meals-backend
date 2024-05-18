@@ -1,4 +1,4 @@
-const SITE_URL = process.env.SITE_URL || "https://mateusz-alicante.github.io/ec-meals-app/";
+const SITE_URL = process.env.SITE_URL || "https://ecmeals.netlify.app/";
 
 import {
   Body,
