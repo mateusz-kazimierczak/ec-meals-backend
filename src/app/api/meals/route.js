@@ -52,8 +52,6 @@ const getNextUpdateTime = () => {
 export async function GET(req, res) {
   await connectDB();
 
-  const cookies = cookies(); // Get the cookies from the request to prevent caching
-
   const ROLE = req.headers.get("userRole");
   let forUser = req.headers.get("forUser");
 
