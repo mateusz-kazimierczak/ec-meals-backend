@@ -2,6 +2,8 @@ import connectDB from "@/_helpers/db/connect";
 import User from "@/_helpers/db/models/User";
 import Day from "@/_helpers/db/models/Day";
 
+import { todayDate, tomorrowDate, dayString } from "@/_helpers/time";
+
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
 
@@ -10,33 +12,14 @@ export async function GET(req, res) {
 
   const forUser = req.headers.get("userID");
 
-  const updateTimeToday = new Date();
-  updateTimeToday.setHours(
-    parseInt(process.env.UPDATE_TIME.slice(0, 2)),
-    parseInt(process.env.UPDATE_TIME.slice(2)),
-    0,
-    0
-  );
-
-  const todayDate = new Date();
-
-  if (todayDate < updateTimeToday) {
-    todayDate.setDate(todayDate.getDate() - 1);
-  }
-  const dayIndex = (todayDate.getDay() - 1) % 7;
-
-  const todayString = `${todayDate.getDate()}/${
-    todayDate.getMonth() + 1
-  }/${todayDate.getFullYear()}`;
+  const [dateToday, todayIndex] = todayDate();
 
   const [thisUser, today] = await Promise.all([
     User.findById(forUser, "meals firstName"),
-    Day.findOne({ date: todayString }, "meals packedMeals"),
+    Day.findOne({ date: dayString(dateToday) }, "meals packedMeals"),
   ]);
 
-  const nextDay = new Date();
-  nextDay.setDate(nextDay.getDate() + 1);
-  const nextDayIndex = (nextDay.getDay() - 1) % 7;
+  const [dateTomorrow, nextDayIndex] = tomorrowDate();
 
   const tomorrowMeals = thisUser.meals[nextDayIndex];
 
