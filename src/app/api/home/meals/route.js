@@ -23,7 +23,7 @@ export async function GET(req, res) {
 
   const tomorrowMeals = thisUser.meals[nextDayIndex];
 
-  const todayMeals = today.meals
+  const todayMeals = today?.meals
     ? today.meals.map((userArr) => {
         for (let i = 0; i < userArr.length; i++) {
           if (userArr[i]._id.toString() == forUser) {
@@ -34,7 +34,7 @@ export async function GET(req, res) {
       })
     : [false, false, false];
 
-  const todayPackedMeals = today.packedMeals
+  const todayPackedMeals = today?.packedMeals
     ? today.packedMeals.map((userArr) => {
         for (let i = 0; i < userArr.length; i++) {
           if (userArr[i]._id.toString() == forUser) {
