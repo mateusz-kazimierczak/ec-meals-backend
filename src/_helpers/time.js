@@ -14,9 +14,9 @@ export const getNextUpdateTime = () => {
   const now = new Date();
   if (nextUpdateTime < now) {
     nextUpdateTime.setDate(nextUpdateTime.getDate() + 1);
-    disabledDayIndex = now.getDay();
-  } else {
     disabledDayIndex = now.getDay() - 1;
+  } else {
+    disabledDayIndex = now.getDay() - 2;
   }
 
   disabledDayIndex = disabledDayIndex % 7;
