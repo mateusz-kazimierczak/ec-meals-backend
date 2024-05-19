@@ -16,6 +16,7 @@ export const getNextUpdateTime = () => {
     disabledDayIndex = currUTC.getDay() - 1;
   } else {
     disabledDayIndex = currUTC.getDay() - 2;
+    nextUpdateTime.setDate(nextUpdateTime.getDate() + 1);
   }
 
   if (disabledDayIndex < 0) {
@@ -23,8 +24,6 @@ export const getNextUpdateTime = () => {
   }
 
   disabledDayIndex = disabledDayIndex % 7;
-
-  console.log(disabledDayIndex);
 
   return [nextUpdateTime, disabledDayIndex];
 };
