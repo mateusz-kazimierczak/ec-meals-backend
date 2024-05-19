@@ -2,6 +2,7 @@ const TIMEZONE_CONSTANT = -4;
 
 export const getNextUpdateTime = () => {
   const nextUpdateTime = new Date();
+  const currUTC = new Date();
   let disabledDayIndex;
 
   nextUpdateTime.setUTCHours(
@@ -11,12 +12,10 @@ export const getNextUpdateTime = () => {
   nextUpdateTime.setUTCSeconds(0);
   nextUpdateTime.setUTCMilliseconds(0);
 
-  const now = new Date();
-  if (nextUpdateTime < now) {
-    nextUpdateTime.setDate(nextUpdateTime.getDate() + 1);
-    disabledDayIndex = now.getDay() - 1;
+  if (nextUpdateTime.getTime() > currUTC.getTime()) {
+    disabledDayIndex = currUTC.getDay() - 1;
   } else {
-    disabledDayIndex = now.getDay() - 2;
+    disabledDayIndex = currUTC.getDay() - 2;
   }
 
   disabledDayIndex = disabledDayIndex % 7;
