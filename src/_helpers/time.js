@@ -18,7 +18,13 @@ export const getNextUpdateTime = () => {
     disabledDayIndex = currUTC.getDay() - 2;
   }
 
+  if (disabledDayIndex < 0) {
+    disabledDayIndex = 6;
+  }
+
   disabledDayIndex = disabledDayIndex % 7;
+
+  console.log(disabledDayIndex);
 
   return [nextUpdateTime, disabledDayIndex];
 };
@@ -34,6 +40,10 @@ export const todayDate = () => {
   }
 
   let dayIndex = (today.getDay() - 1) % 7;
+
+  if (dayIndex < 0) {
+    dayIndex = 6;
+  }
 
   return [today, dayIndex];
 };

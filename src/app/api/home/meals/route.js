@@ -18,7 +18,8 @@ const getUserMeals = async (forUser) => {
   const [dateTomorrow, nextDayIndex] = tomorrowDate();
   const [nextUpdateTime, disabledDayIndex] = getNextUpdateTime();
 
-  if (nextUpdateTime.getTime() > dateToday.getTime()) {
+  if (nextUpdateTime.getTime() < dateToday.getTime()) {
+    console.log("past update time");
     // fetch meals from database
     const [today, thisUser] = await Promise.all([
       Day.findOne({ date: dayString(dateToday) }, "meals packedMeals"),
@@ -54,7 +55,8 @@ const getUserMeals = async (forUser) => {
     // fetch meals from user object
 
     const thisUser = await User.findById(forUser, "meals");
-    todayMeals = thisUser.meals[todayIndex];
+    todayMeals = thisUser.meals[todayIndex].slice(0, 3); // only get normal meals,
+    // TODO: fetch packed meals from db
     tomorrowMeals = thisUser.meals[nextDayIndex];
   }
 
