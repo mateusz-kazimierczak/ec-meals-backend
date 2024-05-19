@@ -12,51 +12,75 @@ import {
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
 
+const getMealsFromDayObject = (forUser, day, mealType) => {
+  return day?.[mealType]
+    ? day[mealType].map((userArr) => {
+        for (let i = 0; i < userArr.length; i++) {
+          if (userArr[i]._id.toString() == forUser) {
+            return true;
+          }
+        }
+        return false;
+      })
+    : [false, false, false];
+};
+
 const getUserMeals = async (forUser) => {
   let todayMeals, tomorrowMeals;
   const [dateToday, todayIndex] = todayDate();
   const [dateTomorrow, nextDayIndex] = tomorrowDate();
   const [nextUpdateTime, disabledDayIndex] = getNextUpdateTime();
 
-  if (nextUpdateTime.getTime() < dateToday.getTime()) {
-    console.log("past update time");
+  const todayUpdate = new Date(dateToday);
+  todayUpdate.setUTCHours(
+    process.env.UPDATE_TIME.slice(0, 2) - 4,
+    process.env.UPDATE_TIME.slice(2),
+    0,
+    0
+  );
+
+  if (todayUpdate.getTime() < dateToday.getTime()) {
     // fetch meals from database
-    const [today, thisUser] = await Promise.all([
-      Day.findOne({ date: dayString(dateToday) }, "meals packedMeals"),
-      User.findById(forUser, "meals"),
+    const [today, thisUser, tomorrow] = await Promise.all([
+      Day.findOne({ date: dayString(dateToday) }, "meals packedMeals"), // get meals for today. Both packed and normal
+      User.findById(forUser, "meals"), // The user object has normal meals for tomorrow
+      Day.findOne({ date: dayString(dateTomorrow) }, "packedMeals"), // For packed meals for tomorrow, you need the day object
     ]);
 
-    const todayNormalMeals = today?.meals
-      ? today.meals.map((userArr) => {
-          for (let i = 0; i < userArr.length; i++) {
-            if (userArr[i]._id.toString() == forUser) {
-              return true;
-            }
-          }
-          return false;
-        })
-      : [false, false, false];
+    const todayNormalMeals = getMealsFromDayObject(forUser, today, "meals");
 
-    const todayPackedMeals = today?.packedMeals
-      ? today.packedMeals.map((userArr) => {
-          for (let i = 0; i < userArr.length; i++) {
-            if (userArr[i]._id.toString() == forUser) {
-              return true;
-            }
-          }
-          return false;
-        })
-      : [false, false, false];
+    const todayPackedMeals = getMealsFromDayObject(
+      forUser,
+      today,
+      "packedMeals"
+    );
 
     todayMeals = todayNormalMeals.concat(todayPackedMeals);
 
-    tomorrowMeals = thisUser.meals[nextDayIndex];
+    const tomorrowNormalMeals = thisUser.meals[nextDayIndex].slice(0, 3);
+
+    const tomorrowPackedMeals = getMealsFromDayObject(
+      forUser,
+      tomorrow,
+      "packedMeals"
+    );
+
+    tomorrowMeals = tomorrowNormalMeals.concat(tomorrowPackedMeals);
   } else {
     // fetch meals from user object
 
-    const thisUser = await User.findById(forUser, "meals");
+    const [thisUser, today] = await Promise.all([
+      User.findById(forUser, "meals"),
+      Day.findOne({ date: dayString(dateToday) }, "packedMeals"),
+    ]);
     todayMeals = thisUser.meals[todayIndex].slice(0, 3); // only get normal meals,
-    // TODO: fetch packed meals from db
+    const todayPackedMeals = getMealsFromDayObject(
+      forUser,
+      today,
+      "packedMeals"
+    );
+
+    todayMeals = todayMeals.concat(todayPackedMeals);
     tomorrowMeals = thisUser.meals[nextDayIndex];
   }
 
