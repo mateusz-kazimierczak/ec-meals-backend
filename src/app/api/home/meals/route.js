@@ -33,7 +33,7 @@ const getUserMeals = async (forUser) => {
 
   const todayUpdate = new Date(dateToday);
   todayUpdate.setUTCHours(
-    process.env.UPDATE_TIME.slice(0, 2) - 4,
+    process.env.UPDATE_TIME.slice(0, 2) + 4, // TODO: get this from env variable
     process.env.UPDATE_TIME.slice(2),
     0,
     0
