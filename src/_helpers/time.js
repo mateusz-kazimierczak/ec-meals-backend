@@ -13,9 +13,9 @@ export const getNextUpdateTime = () => {
   nextUpdateTime.setUTCMilliseconds(0);
 
   if (nextUpdateTime.getTime() > currUTC.getTime()) {
-    disabledDayIndex = currUTC.getDay() - 1;
-  } else {
     disabledDayIndex = currUTC.getDay() - 2;
+  } else {
+    disabledDayIndex = currUTC.getDay() - 1;
     nextUpdateTime.setDate(nextUpdateTime.getDate() + 1);
   }
 
