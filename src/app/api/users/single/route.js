@@ -27,6 +27,8 @@ const buildUser = async (ujson) => {
     user.hash = hash;
   }
 
+  user.username = user.username.toLowerCase().trim();
+
   return user;
 };
 

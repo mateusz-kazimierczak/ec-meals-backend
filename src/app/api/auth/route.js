@@ -26,6 +26,8 @@ export async function POST(req, res) {
 
   const data = await req.json();
 
+  const username = data.username.trim().toLowerCase();
+
   // Do some validation here
   const user = await User.findOne({ username: data.username })
     .select("hash username active role")
