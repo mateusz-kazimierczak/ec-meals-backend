@@ -29,7 +29,7 @@ export async function POST(req, res) {
   const username = data.username.trim().toLowerCase();
 
   // Do some validation here
-  const user = await User.findOne({ username: data.username })
+  const user = await User.findOne({ username: username })
     .select("hash username active role")
     .catch((e) => {
       // Do some more error hanlding here
