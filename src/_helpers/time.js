@@ -14,18 +14,14 @@ export const getNextUpdateTime = () => {
   nextUpdateTime.setUTCMilliseconds(0);
 
   if (nextUpdateTime.getTime() > currUTC.getTime()) {
-    disabledDayIndex = currUTC.getDay() - 1;
+    disabledDayIndex = currUTC.getUTCDay() - 1;
   } else {
-    disabledDayIndex = currUTC.getDay();
+    disabledDayIndex = currUTC.getUTCDay();
     nextUpdateTime.setDate(nextUpdateTime.getDate() + 1);
   }
 
   if (currUTC.getHours() <= 4) {
     disabledDayIndex = disabledDayIndex - 1;
-  }
-
-  if (disabledDayIndex < 0) {
-    disabledDayIndex = 6;
   }
 
   disabledDayIndex = disabledDayIndex % 7;
