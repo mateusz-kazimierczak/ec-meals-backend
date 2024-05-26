@@ -13,11 +13,15 @@ export const getNextUpdateTime = () => {
   nextUpdateTime.setUTCSeconds(0);
   nextUpdateTime.setUTCMilliseconds(0);
 
-  if (nextUpdateTime.getTime() > currUTC.getTime() || currUTC.getHours() <= 4) {
+  if (nextUpdateTime.getTime() > currUTC.getTime()) {
     disabledDayIndex = currUTC.getDay() - 1;
   } else {
     disabledDayIndex = currUTC.getDay();
     nextUpdateTime.setDate(nextUpdateTime.getDate() + 1);
+  }
+
+  if (currUTC.getHours() <= 4) {
+    disabledDayIndex = disabledDayIndex - 1;
   }
 
   if (disabledDayIndex < 0) {
