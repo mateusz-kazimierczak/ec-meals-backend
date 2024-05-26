@@ -8,14 +8,15 @@ export const getNextUpdateTime = () => {
   nextUpdateTime.setUTCHours(
     process.env.UPDATE_TIME.slice(0, 2) - TIMEZONE_CONSTANT
   );
+
   nextUpdateTime.setUTCMinutes(process.env.UPDATE_TIME.slice(2));
   nextUpdateTime.setUTCSeconds(0);
   nextUpdateTime.setUTCMilliseconds(0);
 
   if (nextUpdateTime.getTime() > currUTC.getTime()) {
-    disabledDayIndex = currUTC.getDay() - 2;
-  } else {
     disabledDayIndex = currUTC.getDay() - 1;
+  } else {
+    disabledDayIndex = currUTC.getDay();
     nextUpdateTime.setDate(nextUpdateTime.getDate() + 1);
   }
 
@@ -24,6 +25,9 @@ export const getNextUpdateTime = () => {
   }
 
   disabledDayIndex = disabledDayIndex % 7;
+
+  console.log("Next update time: ", nextUpdateTime.getTime());
+  console.log("Disabled day index: ", disabledDayIndex);
 
   return [nextUpdateTime, disabledDayIndex];
 };

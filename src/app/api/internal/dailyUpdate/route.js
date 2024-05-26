@@ -116,6 +116,13 @@ export async function GET() {
         warning: !markedTomorrow,
       });
     }
+
+    // remove current meals
+    user.meals[dayIndex] =
+      [false, false, false] + user.meals[dayIndex].slice(3);
+
+    user.meals[nextDayIndex] =
+      user.meals[nextDayIndex].slice(0, 3) + [false, false, false];
   });
 
   today.meals = meals;
