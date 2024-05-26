@@ -6,21 +6,24 @@ export const getNextUpdateTime = () => {
   let disabledDayIndex;
 
   nextUpdateTime.setUTCHours(
-    process.env.UPDATE_TIME.slice(0, 2) - TIMEZONE_CONSTANT
+    parseInt(process.env.UPDATE_TIME.slice(0, 2)) - TIMEZONE_CONSTANT
   );
 
   nextUpdateTime.setUTCMinutes(process.env.UPDATE_TIME.slice(2));
   nextUpdateTime.setUTCSeconds(0);
   nextUpdateTime.setUTCMilliseconds(0);
 
-  if (nextUpdateTime.getTime() > currUTC.getTime()) {
+  if (
+    nextUpdateTime.getTime() > currUTC.getTime() ||
+    currUTC.getUTCHours() < 4
+  ) {
+    console.log("before next udpate");
     disabledDayIndex = currUTC.getUTCDay() - 1;
   } else {
+    console.log("after next update");
     disabledDayIndex = currUTC.getUTCDay();
     nextUpdateTime.setDate(nextUpdateTime.getDate() + 1);
   }
-
-  console.log("before neg op: ", disabledDayIndex);
 
   // convert to monday indexed:
   disabledDayIndex = disabledDayIndex - 1;
@@ -28,8 +31,6 @@ export const getNextUpdateTime = () => {
   if (disabledDayIndex < 0) {
     disabledDayIndex = 7 + disabledDayIndex;
   }
-
-  console.log("before mod: ", disabledDayIndex);
 
   disabledDayIndex = disabledDayIndex % 7;
 

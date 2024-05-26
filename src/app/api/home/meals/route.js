@@ -31,7 +31,6 @@ const getUserMeals = async (forUser) => {
   const [dateTomorrow, nextDayIndex] = tomorrowDate();
 
   const todayUpdate = new Date(dateToday);
-  console.log("date today: ", dateToday.getTime());
 
   todayUpdate.setUTCHours(
     parseInt(process.env.UPDATE_TIME.slice(0, 2)) + 4, // TODO: get this from env variable
@@ -39,8 +38,6 @@ const getUserMeals = async (forUser) => {
     0,
     0
   );
-
-  console.log("update time: ", todayUpdate.getTime());
 
   const utcHour = new Date().getUTCHours();
 
