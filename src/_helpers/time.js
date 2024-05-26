@@ -13,7 +13,7 @@ export const getNextUpdateTime = () => {
   nextUpdateTime.setUTCSeconds(0);
   nextUpdateTime.setUTCMilliseconds(0);
 
-  if (nextUpdateTime.getTime() > currUTC.getTime()) {
+  if (nextUpdateTime.getTime() > currUTC.getTime() || currUTC.getHours() <= 4) {
     disabledDayIndex = currUTC.getDay() - 1;
   } else {
     disabledDayIndex = currUTC.getDay();
