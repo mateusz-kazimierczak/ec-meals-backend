@@ -29,15 +29,18 @@ const getUserMeals = async (forUser) => {
   let todayMeals, tomorrowMeals;
   const [dateToday, todayIndex] = todayDate();
   const [dateTomorrow, nextDayIndex] = tomorrowDate();
-  const [nextUpdateTime, disabledDayIndex] = getNextUpdateTime();
 
   const todayUpdate = new Date(dateToday);
+  console.log("date today: ", dateToday.getTime());
+
   todayUpdate.setUTCHours(
-    process.env.UPDATE_TIME.slice(0, 2) + 4, // TODO: get this from env variable
-    process.env.UPDATE_TIME.slice(2),
+    parseInt(process.env.UPDATE_TIME.slice(0, 2)) + 4, // TODO: get this from env variable
+    parseInt(process.env.UPDATE_TIME.slice(2)),
     0,
     0
   );
+
+  console.log("update time: ", todayUpdate.getTime());
 
   const utcHour = new Date().getUTCHours();
 
