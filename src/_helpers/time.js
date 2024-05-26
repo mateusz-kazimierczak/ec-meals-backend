@@ -24,6 +24,8 @@ export const getNextUpdateTime = () => {
     disabledDayIndex = disabledDayIndex - 1;
   }
 
+  console.log("before mod: ", disabledDayIndex);
+
   disabledDayIndex = disabledDayIndex % 7;
 
   console.log("Next update time: ", nextUpdateTime.getTime());
