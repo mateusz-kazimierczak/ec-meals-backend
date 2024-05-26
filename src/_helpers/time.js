@@ -22,8 +22,11 @@ export const getNextUpdateTime = () => {
 
   console.log("before neg op: ", disabledDayIndex);
 
+  // convert to monday indexed:
+  disabledDayIndex = disabledDayIndex - 1;
+
   if (disabledDayIndex < 0) {
-    disabledDayIndex = 6 + disabledDayIndex;
+    disabledDayIndex = 7 + disabledDayIndex;
   }
 
   console.log("before mod: ", disabledDayIndex);
