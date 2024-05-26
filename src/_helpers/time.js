@@ -20,10 +20,6 @@ export const getNextUpdateTime = () => {
     nextUpdateTime.setDate(nextUpdateTime.getDate() + 1);
   }
 
-  if (currUTC.getHours() <= 4) {
-    disabledDayIndex = disabledDayIndex - 1;
-  }
-
   console.log("before neg op: ", disabledDayIndex);
 
   if (disabledDayIndex < 0) {
