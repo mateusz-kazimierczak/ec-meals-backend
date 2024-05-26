@@ -39,7 +39,10 @@ const getUserMeals = async (forUser) => {
     0
   );
 
-  if (todayUpdate.getTime() < dateToday.getTime()) {
+  const utcHour = new Date().getUTCHours();
+
+  if (todayUpdate.getTime() < dateToday.getTime() || utcHour < 4) {
+    console.log("after update time");
     // fetch meals from database
     const [today, thisUser, tomorrow] = await Promise.all([
       Day.findOne({ date: dayString(dateToday) }, "meals packedMeals"), // get meals for today. Both packed and normal
@@ -67,6 +70,7 @@ const getUserMeals = async (forUser) => {
 
     tomorrowMeals = tomorrowNormalMeals.concat(tomorrowPackedMeals);
   } else {
+    console.log("before update time");
     // fetch meals from user object
 
     const [thisUser, today] = await Promise.all([

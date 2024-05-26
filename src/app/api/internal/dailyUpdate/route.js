@@ -59,71 +59,84 @@ export async function GET() {
 
   const emails = [];
 
-  users.forEach((user) => {
-    if (user.meals[dayIndex][6]) {
-      return noMeals.push(constructMealUserObject(user));
-    }
-
-    // Check every user
-    user.meals[dayIndex].slice(0, 3).forEach((meal, index) => {
-      // Check every meal on that day (not packed meals)
-      if (meal) {
-        meals[index].push(constructMealUserObject(user));
+  await Promise.all(
+    users.map(async (user) => {
+      if (user.meals[dayIndex][6]) {
+        return noMeals.push(constructMealUserObject(user));
       }
-    });
 
-    user.meals[nextDayIndex].slice(3, 6).forEach((meal, index) => {
-      // Check every packed meal on that day
-      if (meal) {
-        packedMeals[index].push(constructMealUserObject(user));
-      }
-    });
-
-    const mealsToday = user.meals[dayIndex];
-    const mealsTomorrow = user.meals[nextDayIndex];
-
-    let markedToday = false;
-    for (let i = 0; i < 7; i++) {
-      if (mealsToday[i]) {
-        markedToday = true;
-        break;
-      }
-    }
-
-    let markedTomorrow = false;
-    for (let i = 0; i < 7; i++) {
-      if (mealsTomorrow[i]) {
-        markedTomorrow = true;
-        break;
-      }
-    }
-
-    if (!markedToday) {
-      unmarked.push(constructMealUserObject(user));
-    }
-
-    if (
-      ((user.preferences.email === 1 && !markedTomorrow) ||
-        user.preferences.email === 2) &&
-      user.email
-    ) {
-      emails.push({
-        name: user.firstName,
-        email: user.email,
-        meals: user.meals,
-        todayMeals: mealsToday,
-        tomorrowMeals: mealsTomorrow,
-        warning: !markedTomorrow,
+      // Check every user
+      user.meals[dayIndex].slice(0, 3).forEach((meal, index) => {
+        // Check every meal on that day (not packed meals)
+        if (meal) {
+          meals[index].push(constructMealUserObject(user));
+        }
       });
-    }
 
-    // remove current meals
-    user.meals[dayIndex] =
-      [false, false, false] + user.meals[dayIndex].slice(3);
+      user.meals[nextDayIndex].slice(3, 6).forEach((meal, index) => {
+        // Check every packed meal on that day
+        if (meal) {
+          packedMeals[index].push(constructMealUserObject(user));
+        }
+      });
 
-    user.meals[nextDayIndex] =
-      user.meals[nextDayIndex].slice(0, 3) + [false, false, false];
-  });
+      const mealsToday = user.meals[dayIndex];
+      const mealsTomorrow = user.meals[nextDayIndex];
+
+      let markedToday = false;
+      for (let i = 0; i < 7; i++) {
+        if (mealsToday[i]) {
+          markedToday = true;
+          break;
+        }
+      }
+
+      let markedTomorrow = false;
+      for (let i = 0; i < 7; i++) {
+        if (mealsTomorrow[i]) {
+          markedTomorrow = true;
+          break;
+        }
+      }
+
+      if (!markedToday) {
+        unmarked.push(constructMealUserObject(user));
+      }
+
+      if (
+        ((user.preferences.email === 1 && !markedTomorrow) ||
+          user.preferences.email === 2) &&
+        user.email
+      ) {
+        emails.push({
+          name: user.firstName,
+          email: user.email,
+          meals: user.meals,
+          todayMeals: mealsToday,
+          tomorrowMeals: mealsTomorrow,
+          warning: !markedTomorrow,
+        });
+      }
+
+      console.log(
+        "day meals: ",
+        user.meals[dayIndex],
+        user.meals[dayIndex].slice(3)
+      );
+
+      // remove current meals
+      user.meals[dayIndex] = [false, false, false].concat(
+        user.meals[dayIndex].slice(3)
+      );
+
+      user.meals[nextDayIndex] = user.meals[nextDayIndex]
+        .slice(0, 3)
+        .concat([false, false, false]);
+
+      user.markModified("meals");
+      await user.save();
+    })
+  );
 
   today.meals = meals;
   tomorrow.packedMeals = packedMeals;
