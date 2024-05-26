@@ -20,11 +20,11 @@ export const getNextUpdateTime = () => {
     nextUpdateTime.setDate(nextUpdateTime.getDate() + 1);
   }
 
-  if (currUTC.getHours() <= 4) {
-    disabledDayIndex = disabledDayIndex - 1;
-  }
-
   console.log("before mod: ", disabledDayIndex);
+
+  if (disabledDayIndex < 0) {
+    disabledDayIndex = 6 + disabledDayIndex;
+  }
 
   disabledDayIndex = disabledDayIndex % 7;
 
