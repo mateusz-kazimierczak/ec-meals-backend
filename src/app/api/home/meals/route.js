@@ -16,7 +16,7 @@ const getMealsFromDayObject = (forUser, day, mealType) => {
   return day?.[mealType]
     ? day[mealType].map((userArr) => {
         for (let i = 0; i < userArr.length; i++) {
-          if (userArr[i]._id.toString() == forUser) {
+          if (userArr[i]._id?.toString() == forUser) {
             return true;
           }
         }

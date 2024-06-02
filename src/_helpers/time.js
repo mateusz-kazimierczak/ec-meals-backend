@@ -68,5 +68,5 @@ export const tomorrowDate = () => {
   return [tomorrow, dayIndex];
 };
 
-export const dayString = (date) =>
+export const dayString = (date = new Date()) =>
   `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}`;

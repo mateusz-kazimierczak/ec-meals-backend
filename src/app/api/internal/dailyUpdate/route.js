@@ -3,6 +3,7 @@ import User from "@/_helpers/db/models/User";
 import Day from "@/_helpers/db/models/Day";
 import { NextRequest } from "next/server";
 import { sendMealEmails } from "@/_helpers/emails";
+import { dayString } from "@/_helpers/time";
 
 export async function GET() {
   // Check that update date is close enough:
@@ -22,12 +23,9 @@ export async function GET() {
   let nextDayIndex = tomorrowDate.getDay() - 1;
   if (nextDayIndex === -1) nextDayIndex = 6;
 
-  const TodayString = `${todayDate.getDate()}/${
-    todayDate.getMonth() + 1
-  }/${todayDate.getFullYear()}`;
-  const TomorrowString = `${tomorrowDate.getDate()}/${
-    tomorrowDate.getMonth() + 1
-  }/${tomorrowDate.getFullYear()}`;
+  const TodayString = dayString();
+
+  const TomorrowString = dayString(tomorrowDate);
 
   const [users, days] = await Promise.all([
     User.find(
@@ -156,25 +154,6 @@ const constructMealUserObject = (user) => {
     _id: user._id,
     diet: user.diet,
   };
-};
-
-const UpdateDateTooFar = () => {
-  const today = new Date();
-
-  const nextUpdateTime = new Date();
-
-  nextUpdateTime.setHours(
-    parseInt(process.env.UPDATE_TIME.slice(0, 2)),
-    parseInt(process.env.UPDATE_TIME.slice(2)),
-    0,
-    0
-  );
-
-  if (Math.abs(today.getTime() - nextUpdateTime.getTime()) < 1000 * 60 * 3) {
-    return false;
-  }
-
-  return true;
 };
 
 const MealCategories = [

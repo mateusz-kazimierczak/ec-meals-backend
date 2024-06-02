@@ -8,6 +8,7 @@ const schema = new Schema(
     packedMeals: { type: Object },
     noMeals: { type: Array },
     unmarked: { type: Array },
+    guests: { type: Array },
   },
   {
     // add createdAt and updatedAt timestamps

@@ -2,6 +2,7 @@ import connectDB from "@/_helpers/db/connect";
 import User from "@/_helpers/db/models/User";
 import Day from "@/_helpers/db/models/Day";
 import mongoose from "mongoose";
+import { getNextUpdateTime } from "@/_helpers/time";
 
 export async function POST(req, res) {
   const [body] = await Promise.all([req.json(), connectDB()]);
@@ -13,6 +14,8 @@ export async function POST(req, res) {
 
   const date = reconstructDate(body.date);
 
+  let allMeals;
+
   // Check if the date is within 5 days
   if (!isWithin5Days(date)) {
     return Response.json({
@@ -21,14 +24,34 @@ export async function POST(req, res) {
       },
     });
   } else if (date > new Date()) {
-    const [meals, packedMeals, noMeals] = await checkUsersMeals(body.date);
+    const [[meals, packedMeals, noMeals], day] = await Promise.all([
+      checkUsersMeals(body.date),
+      Day.findOne({ date: body.date }),
+    ]);
+
+    allMeals = {
+      meals: day?.meals ? day.meals : meals,
+      packedMeals: day?.packedMeals ? day.packedMeals : packedMeals,
+      noMeals: day?.noMeals ? day.noMeals : noMeals,
+      unmarked: day?.unmarked,
+    };
+
+    day.guests.forEach((guest) => {
+      if (guest.meal < 3) {
+        allMeals.meals[guest.meal].push({
+          name: guest.name,
+          diet: guest.diet,
+        });
+      } else {
+        allMeals.packedMeals[guest.meal - 3].push({
+          name: guest.name,
+          diet: guest.diet,
+        });
+      }
+    });
+
     return Response.json({
-      meals: {
-        meals: day?.meals ? day.meals : meals,
-        packedMeals: day?.packedMeals ? day.packedMeals : packedMeals,
-        noMeals: day?.noMeals ? day.noMeals : noMeals,
-        unmarked: day?.unmarked,
-      },
+      meals: allMeals,
       status: "prediction",
     });
   } else {
@@ -42,91 +65,128 @@ export async function POST(req, res) {
       });
     }
 
+    allMeals = {
+      meals: day.meals ? day.meals : [[], [], []],
+      packedMeals: day.packedMeals ? day.packedMeals : [[], [], []],
+      noMeals: day.noMeals,
+      unmarked: day.unmarked,
+    };
+
+    day.guests.forEach((guest) => {
+      if (guest.meal < 3) {
+        allMeals.meals[guest.meal].push({
+          name: guest.name,
+          diet: guest.diet,
+        });
+      } else {
+        allMeals.packedMeals[guest.meal - 3].push({
+          name: guest.name,
+          diet: guest.diet,
+        });
+      }
+    });
+
     return Response.json({
-      meals: {
-        meals: day.meals,
-        packedMeals: day.packedMeals,
-        noMeals: day.noMeals,
-        unmarked: day.unmarked,
-      },
+      meals: allMeals,
       status: "final",
     });
   }
 }
 
+// For adding users and guests as an admin
 export async function PATCH(req, res) {
   const [body] = await Promise.all([req.json(), connectDB()]);
 
-  const [day, users] = await Promise.all([
+  let [day, users] = await Promise.all([
     Day.findOne({ date: body.date }),
-    User.find(
-      {
-        _id: {
-          $in: body.users.map((user) => new mongoose.Types.ObjectId(user)),
+    body.users &&
+      User.find(
+        {
+          _id: {
+            $in: body.users.map((user) => new mongoose.Types.ObjectId(user)),
+          },
         },
-      },
-      "firstName lastName diet _id"
-    ),
+        "firstName lastName diet _id"
+      ),
   ]);
 
-  if (!day)
-    return Response.json({
-      code: "dayNotFound",
+  if (!day) {
+    day = new Day({
+      date: body.date,
     });
-
-  const mealsIndex = MEALS.indexOf(body.meal);
-
-  if (mealsIndex < 3) {
-    users.forEach((user) => {
-      let existingElement = day.meals[mealsIndex].find(
-        (element) => element._id.toString() === user
-      );
-      if (!existingElement) {
-        day.meals[mealsIndex].push({
-          _id: user._id,
-          diet: user.diet,
-          name: user.firstName + " " + user.lastName,
-        });
-      }
-    });
-    day.markModified("meals");
-  } else {
-    users.forEach((user) => {
-      let existingElement = day.packedMeals[mealsIndex - 3].find(
-        (element) => element._id.toString() === user
-      );
-      if (!existingElement) {
-        day.packedMeals[mealsIndex - 3].push({
-          _id: user._id,
-          diet: user.diet,
-          name: user.firstName + " " + user.lastName,
-        });
-      }
-    });
-    day.markModified("packedMeals");
+    console.log("creating new day");
   }
 
-  // remove all users from the noMeals array
-  day.noMeals = day.noMeals.filter(
-    (element) => !body.users.includes(element._id.toString())
-  );
-  day.markModified("noMeals");
+  if (body.guest) {
+    console.log("adding guest");
+    day.guests.push({
+      meal: body.meal,
+      name: body.guest.name,
+      diet: body.guest.diet,
+    });
+    day.markModified("guests");
+    await day.save();
+    return Response.json({
+      code: "ok",
+    });
+  } else {
+    console.log("adding users");
+    const mealsIndex = MEALS.indexOf(body.meal);
 
-  // remove all users from the unmarked array
-  day.unmarked = day.unmarked.filter(
-    (element) => !body.users.includes(element._id.toString())
-  );
-  day.markModified("unmarked");
+    if (mealsIndex < 3) {
+      // Meals are standard meals
+      users.forEach((user) => {
+        let existingElement = day.meals[mealsIndex].find(
+          (element) => element._id.toString() === user
+        );
+        if (!existingElement) {
+          day.meals[mealsIndex].push({
+            _id: user._id,
+            diet: user.diet,
+            name: user.firstName + " " + user.lastName,
+          });
+        }
+      });
+      day.markModified("meals");
+    } else {
+      // packed meals
+      users.forEach((user) => {
+        let existingElement = day.packedMeals[mealsIndex - 3].find(
+          (element) => element._id.toString() === user
+        );
+        if (!existingElement) {
+          day.packedMeals[mealsIndex - 3].push({
+            _id: user._id,
+            diet: user.diet,
+            name: user.firstName + " " + user.lastName,
+          });
+        }
+      });
+      day.markModified("packedMeals");
+    }
 
-  await day.save();
+    // remove all users from the noMeals array
+    day.noMeals = day.noMeals.filter(
+      (element) => !body.users.includes(element._id.toString())
+    );
+    day.markModified("noMeals");
 
-  console.log(body);
-  console.log(JSON.stringify(day));
-  console.log(day.meals[0]);
+    // remove all users from the unmarked array
+    day.unmarked = day.unmarked.filter(
+      (element) => !body.users.includes(element._id.toString())
+    );
+    day.markModified("unmarked");
 
-  return Response.json({
-    code: "ok",
-  });
+    await day.save();
+
+    console.log(body);
+    console.log(JSON.stringify(day));
+    console.log(day.meals[0]);
+
+    return Response.json({
+      code: "ok",
+    });
+  }
 }
 
 function isWithin5Days(date) {
