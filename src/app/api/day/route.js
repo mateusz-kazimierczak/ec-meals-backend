@@ -36,19 +36,7 @@ export async function POST(req, res) {
       unmarked: day?.unmarked,
     };
 
-    day.guests.forEach((guest) => {
-      if (guest.meal < 3) {
-        allMeals.meals[guest.meal].push({
-          name: guest.name,
-          diet: guest.diet,
-        });
-      } else {
-        allMeals.packedMeals[guest.meal - 3].push({
-          name: guest.name,
-          diet: guest.diet,
-        });
-      }
-    });
+    addGuests(day, allMeals);
 
     return Response.json({
       meals: allMeals,
@@ -72,19 +60,7 @@ export async function POST(req, res) {
       unmarked: day.unmarked,
     };
 
-    day.guests.forEach((guest) => {
-      if (guest.meal < 3) {
-        allMeals.meals[guest.meal].push({
-          name: guest.name,
-          diet: guest.diet,
-        });
-      } else {
-        allMeals.packedMeals[guest.meal - 3].push({
-          name: guest.name,
-          diet: guest.diet,
-        });
-      }
-    });
+    addGuests(day, allMeals);
 
     return Response.json({
       meals: allMeals,
@@ -243,6 +219,21 @@ function reconstructDate(date) {
   );
   return dt;
 }
+
+const addGuests = (day, allMeals) =>
+  day.guests.forEach((guest) => {
+    if (guest.meal < 3) {
+      allMeals.meals[guest.meal].push({
+        name: guest.name,
+        diet: guest.diet,
+      });
+    } else {
+      allMeals.packedMeals[guest.meal - 3].push({
+        name: guest.name,
+        diet: guest.diet,
+      });
+    }
+  });
 
 const constructMealUserObject = (user) => {
   return {
