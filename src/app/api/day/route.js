@@ -221,7 +221,7 @@ function reconstructDate(date) {
 }
 
 const addGuests = (day, allMeals) =>
-  day.guests.forEach((guest) => {
+  day?.guests.forEach((guest) => {
     if (guest.meal < 3) {
       allMeals.meals[guest.meal].push({
         name: guest.name,
