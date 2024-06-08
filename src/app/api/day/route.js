@@ -20,6 +20,8 @@ export async function POST(req, res) {
 
   let allMeals;
 
+
+
   // Check if the date is within 5 days
   if (!isWithin5Days(date)) {
     return Response.json({
@@ -28,16 +30,25 @@ export async function POST(req, res) {
       },
     });
   } else if (date > new Date()) {
-    const [[meals, packedMeals, noMeals], day] = await Promise.all([
+    let [[meals, packedMeals, noMeals, unmarked], day] = await Promise.all([
       checkUsersMeals(body.date),
       Day.findOne({ date: body.date }),
     ]);
+
+    // Must remove from unmarked people that already have a packed meal
+    packedMeals.forEach((packedMeal) => {
+      packedMeal.forEach((user) => {
+        unmarked = unmarked.filter(
+          (unmarkedUser) => unmarkedUser._id.toString() !== user._id.toString()
+        );
+      });
+    });
 
     allMeals = {
       meals: day?.meals ? day.meals : meals,
       packedMeals: day?.packedMeals ? day.packedMeals : packedMeals,
       noMeals: day?.noMeals ? day.noMeals : noMeals,
-      unmarked: day?.unmarked,
+      unmarked: unmarked,
     };
 
     addGuests(day, allMeals);
@@ -186,6 +197,7 @@ async function checkUsersMeals(date) {
   const meals = [[], [], []];
   const packedMeals = [[], [], []];
   const noMeals = [];
+  const unmarked = [];
 
   // Monday is index 0
   let dateIndex = dt.getDay() - 1;
@@ -201,6 +213,9 @@ async function checkUsersMeals(date) {
     if (user.meals[dateIndex][6]) {
       return noMeals.push(constructMealUserObject(user));
     }
+    if (user.meals[dateIndex].every((meal) => !meal)) {
+      return unmarked.push(constructMealUserObject(user));
+    }
     user.meals[dateIndex].forEach((meal, index) => {
       if (meal) {
         if (index < 3) {
@@ -211,7 +226,7 @@ async function checkUsersMeals(date) {
       }
     });
   });
-  return [meals, packedMeals, noMeals];
+  return [meals, packedMeals, noMeals, unmarked];
 }
 
 function reconstructDate(date) {
