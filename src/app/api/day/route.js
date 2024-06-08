@@ -3,6 +3,7 @@ import User from "@/_helpers/db/models/User";
 import Day from "@/_helpers/db/models/Day";
 import mongoose from "mongoose";
 import { getNextUpdateTime } from "@/_helpers/time";
+import { parse } from "path";
 
 export async function POST(req, res) {
   const [body] = await Promise.all([req.json(), connectDB()]);
@@ -13,6 +14,9 @@ export async function POST(req, res) {
   // Get the actual data from the string
 
   const date = reconstructDate(body.date);
+
+
+  date.setUTCHours(parseInt(process.env.UPDATE_TIME.slice(0, 2)) + 4, parseInt(process.env.UPDATE_TIME.slice(2, 4)));
 
   let allMeals;
 
