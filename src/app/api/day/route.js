@@ -191,7 +191,7 @@ function isWithin5Days(date) {
   else return false;
 }
 
-export async function checkUsersMeals(date) {
+async function checkUsersMeals(date) {
   var dt = reconstructDate(date);
 
   const meals = [[], [], []];
