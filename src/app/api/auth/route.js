@@ -27,6 +27,7 @@ export async function POST(req, res) {
   const data = await req.json();
 
   const username = data.username.trim().toLowerCase();
+  const password = data.password.trim();
 
   // Do some validation here
   const user = await User.findOne({ username: username })
@@ -38,7 +39,7 @@ export async function POST(req, res) {
 
   if (!user) return NextResponse.json({ code: "noUser" }, { status: 200 });
 
-  const pass = await bcrypt.compare(data.password, user.hash);
+  const pass = await bcrypt.compare(password, user.hash);
 
   if (!pass) return NextResponse.json({ code: "badPass" }, { status: 200 });
 

@@ -2,26 +2,13 @@ const TIMEZONE_CONSTANT = -4;
 
 export const getNextUpdateTime = () => {
   const nextUpdateTime = new Date();
-  const currUTC = new Date();
   let disabledDayIndex;
 
-  nextUpdateTime.setUTCHours(
-    parseInt(process.env.UPDATE_TIME.slice(0, 2)) - TIMEZONE_CONSTANT
-  );
 
-  nextUpdateTime.setUTCMinutes(process.env.UPDATE_TIME.slice(2));
-  nextUpdateTime.setUTCSeconds(0);
-  nextUpdateTime.setUTCMilliseconds(0);
-
-  if (
-    nextUpdateTime.getTime() > currUTC.getTime() ||
-    currUTC.getUTCHours() < 4
-  ) {
-    console.log("before next udpate");
-    disabledDayIndex = currUTC.getUTCDay() - 1;
+  if (isBeforeUpdateTime(nextUpdateTime)) {
+    disabledDayIndex = nextUpdateTime.getUTCDay() - 1;
   } else {
-    console.log("after next update");
-    disabledDayIndex = currUTC.getUTCDay();
+    disabledDayIndex = nextUpdateTime.getUTCDay();
     nextUpdateTime.setDate(nextUpdateTime.getDate() + 1);
   }
 
@@ -34,8 +21,6 @@ export const getNextUpdateTime = () => {
 
   disabledDayIndex = disabledDayIndex % 7;
 
-  console.log("Next update time: ", nextUpdateTime.getTime());
-  console.log("Disabled day index: ", disabledDayIndex);
 
   return [nextUpdateTime, disabledDayIndex];
 };
@@ -70,3 +55,26 @@ export const tomorrowDate = () => {
 
 export const dayString = (date = new Date()) =>
   `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}`;
+
+
+export const isBeforeUpdateTime = (date) => {
+  const todayUpdatetime = new Date();
+
+  todayUpdatetime.setUTCHours(
+    parseInt(process.env.UPDATE_TIME.slice(0, 2)) - TIMEZONE_CONSTANT
+  );
+
+  todayUpdatetime.setUTCMinutes(process.env.UPDATE_TIME.slice(2));
+  todayUpdatetime.setUTCSeconds(0);
+  todayUpdatetime.setUTCMilliseconds(0);
+
+  if (
+    todayUpdatetime.getTime() > date.getTime() ||
+    date.getUTCHours() < 4
+  ) {
+    return true;
+  } else {
+    return false;
+  }
+
+}
