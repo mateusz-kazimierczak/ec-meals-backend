@@ -22,7 +22,7 @@ export async function GET(req, res) {
     const currHour = currentTime.getUTCHours() + HOUROFFSET;
 
     // Before the update time, need to handle the request differently by collecting all the breakfast from db
-    if (currentTime < isBeforeUpdateTime(currentTime)) {
+    if (isBeforeUpdateTime(currentTime)) {
         // send breakfast from all users
         const [dateToday, todayIndex] = todayDate();
         const breakfast = await getAllUsersBreakfast(todayIndex)
