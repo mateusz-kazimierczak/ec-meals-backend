@@ -5,7 +5,15 @@ export const getNextUpdateTime = () => {
   let disabledDayIndex;
 
 
-  if (isBeforeUpdateTime(nextUpdateTime)) {
+  nextUpdateTime.setUTCHours(
+    parseInt(process.env.UPDATE_TIME.slice(0, 2)) - TIMEZONE_CONSTANT
+  );
+
+  nextUpdateTime.setUTCMinutes(process.env.UPDATE_TIME.slice(2));
+  nextUpdateTime.setUTCSeconds(0);
+  nextUpdateTime.setUTCMilliseconds(0);
+
+  if (isBeforeUpdateTime(new Date())) {
     disabledDayIndex = nextUpdateTime.getUTCDay() - 1;
   } else {
     disabledDayIndex = nextUpdateTime.getUTCDay();

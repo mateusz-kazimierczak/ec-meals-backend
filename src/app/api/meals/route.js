@@ -27,6 +27,9 @@ export async function GET(req, res) {
 
   const [updateTime, disabledDay] = getNextUpdateTime();
 
+  console.log("curr time", new Date().getTime());
+  console.log("update time", updateTime.getTime());
+
   return Response.json({
     meals: data.meals,
     firstName: data.firstName,
