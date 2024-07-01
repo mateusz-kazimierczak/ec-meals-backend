@@ -19,7 +19,11 @@ export async function GET(req, res) {
 
     // Decide which meals to send
     const currentTime = new Date();
-    const currHour = currentTime.getUTCHours() + HOUROFFSET;
+    let currHour = currentTime.getUTCHours() + HOUROFFSET;
+
+    if (currHour < 0) {
+        currHour += 24;
+    }
 
     // Before the update time, need to handle the request differently by collecting all the breakfast from db
     if (isBeforeUpdateTime(currentTime)) {
@@ -36,8 +40,7 @@ export async function GET(req, res) {
     
     const [dateToday, todayIndex] = todayDate();
     const meals = (await Day.findOne({ date: dayString(dateToday) }, "meals")).meals;
-    
-    
+
     
     if (currHour < 9) {
         // send breakfast

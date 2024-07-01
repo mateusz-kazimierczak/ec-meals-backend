@@ -13,7 +13,9 @@ export const getNextUpdateTime = () => {
   nextUpdateTime.setUTCSeconds(0);
   nextUpdateTime.setUTCMilliseconds(0);
 
-  if (isBeforeUpdateTime(new Date())) {
+  const now = new Date();
+
+  if (isBeforeUpdateTime(now) || now.getUTCHours() + TIMEZONE_CONSTANT < 0) {
     disabledDayIndex = nextUpdateTime.getUTCDay() - 1;
   } else {
     disabledDayIndex = nextUpdateTime.getUTCDay();
@@ -76,10 +78,13 @@ export const isBeforeUpdateTime = (date) => {
   todayUpdatetime.setUTCSeconds(0);
   todayUpdatetime.setUTCMilliseconds(0);
 
+  console.log("utc hours: ", date.getUTCHours());
+
   if (
-    todayUpdatetime.getTime() > date.getTime() ||
-    date.getUTCHours() < 4
+    todayUpdatetime.getTime() > date.getTime() &&
+    date.getUTCHours() > 4
   ) {
+    console.log("before update time");
     return true;
   } else {
     return false;
