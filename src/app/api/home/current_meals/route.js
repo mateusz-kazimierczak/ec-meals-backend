@@ -46,12 +46,12 @@ export async function GET(req, res) {
     
     if (currHour < 9) {
         // send breakfast
-        return Response.json({ meal: "Breakfast", meals: meals[0] });
+        return Response.json({ meal: "Breakfast", meals: meals[0], currHour });
 
     } else if (currHour < 14) {
         // send lunch
 
-        return Response.json({ meal: "Lunch", meals: meals[1] });
+        return Response.json({ meal: "Lunch", meals: meals[1], currHour });
 
    // } else if (currHour < 19) {
     } else  {
