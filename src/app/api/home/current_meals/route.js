@@ -57,7 +57,7 @@ export async function GET(req, res) {
     } else  {
         // send dinner
 
-        return Response.json({ meal: "Supper", meals: meals[2], currHour, currDate: new Date.now() });
+        return Response.json({ meal: "Supper", meals: meals[2], currHour, currDate: new Date() });
 
     }
 
