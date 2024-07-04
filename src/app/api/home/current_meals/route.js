@@ -4,6 +4,8 @@ import Day from "@/_helpers/db/models/Day";
 
 const HOUROFFSET =  -4;
 
+export const revalidate = 0;
+
 import {
     todayDate,
     tomorrowDate,
