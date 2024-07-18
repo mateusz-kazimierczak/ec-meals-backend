@@ -7,20 +7,23 @@ import { parse } from "path";
 
 export async function POST(req, res) {
   const [body] = await Promise.all([req.json(), connectDB()]);
-  const day = await Day.findOne({ date: body.date }).catch((err) => {
-    console.log(err);
-  });
+
+  const [day, users] = await Promise.all([
+    Day.findOne({ date: body.date }).catch((err) => {
+      console.log(err);
+    }), 
+    User.find(
+      { active: true },
+      "firstName lastName meals preferences diet"
+    )])
 
   // Get the actual data from the string
-
   const date = reconstructDate(body.date);
 
 
   date.setUTCHours(parseInt(process.env.UPDATE_TIME.slice(0, 2)) + 4, parseInt(process.env.UPDATE_TIME.slice(2, 4)));
 
   let allMeals;
-
-
 
   // Check if the date is within 5 days
   if (!isWithin5Days(date)) {
@@ -30,9 +33,8 @@ export async function POST(req, res) {
       },
     });
   } else if (date > new Date()) {
-    let [[meals, packedMeals, noMeals, unmarked], day] = await Promise.all([
-      checkUsersMeals(body.date),
-      Day.findOne({ date: body.date }),
+    let [[meals, packedMeals, noMeals, unmarked]] = await Promise.all([
+      checkUsersMeals(body.date, users),
     ]);
 
     // Must remove from unmarked people that already have a packed meal
@@ -55,6 +57,7 @@ export async function POST(req, res) {
 
     return Response.json({
       meals: allMeals,
+      allUsers: users,
       status: "prediction",
     });
   } else {
@@ -79,6 +82,7 @@ export async function POST(req, res) {
 
     return Response.json({
       meals: allMeals,
+      allUsers: users,
       status: "final",
     });
   }
@@ -191,7 +195,7 @@ function isWithin5Days(date) {
   else return false;
 }
 
-async function checkUsersMeals(date) {
+async function checkUsersMeals(date, users) {
   var dt = reconstructDate(date);
 
   const meals = [[], [], []];
@@ -203,10 +207,6 @@ async function checkUsersMeals(date) {
   let dateIndex = dt.getDay() - 1;
   if (dateIndex < 0) dateIndex = 6;
 
-  const users = await User.find(
-    { active: true },
-    "firstName lastName meals preferences diet"
-  );
 
   users.forEach((user) => {
     if (!user.meals) return;
