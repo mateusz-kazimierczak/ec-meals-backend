@@ -2,7 +2,7 @@ import connectDB from "@/_helpers/db/connect";
 import User from "@/_helpers/db/models/User";
 import Day from "@/_helpers/db/models/Day";
 import mongoose from "mongoose";
-import { getNextUpdateTime } from "@/_helpers/time";
+import { getNextUpdateTime, reconstructDate, isWithin5Days } from "@/_helpers/time";
 import { parse } from "path";
 
 export async function POST(req, res) {
@@ -184,16 +184,6 @@ export async function PATCH(req, res) {
   }
 }
 
-function isWithin5Days(date) {
-  var today = new Date();
-  var in5days = new Date(
-    today.getFullYear(),
-    today.getMonth(),
-    today.getDate() + 5
-  );
-  if (date <= in5days) return true;
-  else return false;
-}
 
 async function checkUsersMeals(date, users) {
   var dt = reconstructDate(date);
@@ -229,15 +219,6 @@ async function checkUsersMeals(date, users) {
   return [meals, packedMeals, noMeals, unmarked];
 }
 
-function reconstructDate(date) {
-  var parts = date.split("/");
-  var dt = new Date(
-    parseInt(parts[2], 10),
-    parseInt(parts[1], 10) - 1,
-    parseInt(parts[0], 10)
-  );
-  return dt;
-}
 
 const addGuests = (day, allMeals) =>
   day?.guests.forEach((guest) => {

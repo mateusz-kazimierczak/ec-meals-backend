@@ -23,8 +23,6 @@ export async function GET(req, res) {
     const currentTime = new Date();
     let currHour = currentTime.getUTCHours() + HOUROFFSET;
 
-    console.log("current hour: ", currHour);
-
     if (currHour < 0) {
         currHour += 24;
     }

@@ -26,6 +26,7 @@ const getMealsFromDayObject = (forUser, day, mealType) => {
 };
 
 const getUserMeals = async (forUser) => {
+
   let todayMeals, tomorrowMeals;
   const [dateToday, todayIndex] = todayDate();
   const [dateTomorrow, nextDayIndex] = tomorrowDate();
@@ -42,18 +43,20 @@ const getUserMeals = async (forUser) => {
   const utcHour = new Date().getUTCHours();
 
   if (todayUpdate.getTime() < new Date().getTime() || utcHour < 4) {
-    console.log(
-      "after update time",
-      todayUpdate.getTime(),
-      dateToday.getTime(),
-      utcHour
-    );
     // fetch meals from database
     const [today, thisUser, tomorrow] = await Promise.all([
       Day.findOne({ date: dayString(dateToday) }, "meals packedMeals"), // get meals for today. Both packed and normal
       User.findById(forUser, "meals"), // The user object has normal meals for tomorrow
       Day.findOne({ date: dayString(dateTomorrow) }, "packedMeals"), // For packed meals for tomorrow, you need the day object
     ]);
+
+    console.log("today: ", today);
+
+
+    if (!today || !today.meals || !thisUser || !thisUser.meals) {
+      return [null, null];
+    }
+
 
     const todayNormalMeals = getMealsFromDayObject(forUser, today, "meals");
 
@@ -65,6 +68,10 @@ const getUserMeals = async (forUser) => {
 
     todayMeals = todayNormalMeals.concat(todayPackedMeals);
 
+    if (!tomorrow || !tomorrow.meals) {
+      return [todayMeals, null];
+    }
+
     const tomorrowNormalMeals = thisUser.meals[nextDayIndex].slice(0, 3);
 
     const tomorrowPackedMeals = getMealsFromDayObject(
@@ -75,18 +82,20 @@ const getUserMeals = async (forUser) => {
 
     tomorrowMeals = tomorrowNormalMeals.concat(tomorrowPackedMeals);
   } else {
-    console.log(
-      "before update time",
-      todayUpdate.getTime(),
-      dateToday.getTime(),
-      utcHour
-    );
     // fetch meals from user object
+
+    
 
     const [thisUser, today] = await Promise.all([
       User.findById(forUser, "meals"),
       Day.findOne({ date: dayString(dateToday) }, "packedMeals"),
     ]);
+
+
+    if (!thisUser || !thisUser.meals) {
+      return [null, null];
+    }
+    
     todayMeals = thisUser.meals[todayIndex].slice(0, 3); // only get normal meals,
     const todayPackedMeals = getMealsFromDayObject(
       forUser,

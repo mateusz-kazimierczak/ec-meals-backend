@@ -35,6 +35,11 @@ export const getNextUpdateTime = () => {
   return [nextUpdateTime, disabledDayIndex];
 };
 
+export const getUpdateTimeToday = () => {
+  const nextUpdateTime = new Date();
+
+}
+
 export const todayDate = () => {
   const today = new Date();
   const newHour = today.getHours() + TIMEZONE_CONSTANT;
@@ -90,4 +95,42 @@ export const isBeforeUpdateTime = (date) => {
     return false;
   }
 
+}
+
+export const reconstructDate = (date) => {
+  var parts = date.split("/");
+  var dt = new Date(
+    parseInt(parts[2], 10),
+    parseInt(parts[1], 10) - 1,
+    parseInt(parts[0], 10)
+  );
+  return dt;
+}
+
+export const isWithin5Days = (date) => {
+  var today = new Date();
+  var in5days = new Date(
+    today.getFullYear(),
+    today.getMonth(),
+    today.getDate() + 5
+  );
+  if (date <= in5days) return true;
+  else return false;
+}
+
+export const hasDayUpdated = (date) => {
+  // modify hours and minutes to match the current time
+  const now = new Date();
+  const update = new Date(date);
+  update.setUTCHours(
+    now.getUTCHours(),
+    now.getUTCMinutes(),
+  );
+
+
+  if (today.getTime() > update.getTime()) {
+    return true;
+  } else {
+    return false;
+  }
 }

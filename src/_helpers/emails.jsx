@@ -2,7 +2,9 @@ import WelcomeEmail from "../../emails/WelcomeEmail";
 import DailyEmail from "../../emails/DailyEmail";
 import { Resend } from "resend";
 
-const resend = new Resend("re_CyrevG38_3wVicVBegbQVMJQT9j9Yhwxe");
+const resendApiKey = process.env.RESEND_API_KEY
+
+const resend = new Resend(resendApiKey);
 
 
 export const sendWelcomeEmail = async (user, pass) => {
