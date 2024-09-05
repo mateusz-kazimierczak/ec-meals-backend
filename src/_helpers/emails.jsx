@@ -22,8 +22,8 @@ export const sendWelcomeEmail = async (user, pass) => {
   };
   
 export const sendMealEmails = async (users) => {
-    if (process.env.RESEND_API_KEY != "true") return console.log("Skipping email sending");
-    
+    if (process.env.ENABLE_EMAIL != "true") return console.log("Skipping email sending");
+
     console.log("Sending meal emails to ", users.length, " users");
     if (users.length === 0) return;
     await resend.batch.send(

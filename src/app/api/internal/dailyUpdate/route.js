@@ -166,10 +166,7 @@ export async function GET() {
     })
   );
 
-  console.log("before today: ", today);
-  console.log("meals: ", meals);
   addMealsToDays(today, tomorrow, meals, packedMeals, unmarked);
-  console.log("after today: ", today);
 
   await Promise.all([today.save(), tomorrow.save(), sendMealEmails(emails), 
     saveIfExists(nextWeekToday), saveIfExists(nextWeekTomorrow)
