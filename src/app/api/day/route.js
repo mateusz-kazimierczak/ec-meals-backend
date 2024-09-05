@@ -2,7 +2,7 @@ import connectDB from "@/_helpers/db/connect";
 import User from "@/_helpers/db/models/User";
 import Day from "@/_helpers/db/models/Day";
 import mongoose from "mongoose";
-import { getNextUpdateTime, reconstructDate, isWithin5Days } from "@/_helpers/time";
+import { getNextUpdateTime, reconstructDate, isWithin5Days, isWithinAWeek, getAppDayIndex, isToday, isNowPastUpdateTime, isTomorrow } from "@/_helpers/time";
 import { parse } from "path";
 
 export async function POST(req, res) {
@@ -25,32 +25,24 @@ export async function POST(req, res) {
 
   let allMeals;
 
-  // Check if the date is within 5 days
-  if (!isWithin5Days(date)) {
-    return Response.json({
-      meals: {
-        error: "Date is too far in the future",
-      },
-    });
-  } else if (date > new Date()) {
-    let [[meals, packedMeals, noMeals, unmarked]] = await Promise.all([
-      checkUsersMeals(body.date, users),
-    ]);
+  if (date > new Date()) {
 
-    // Must remove from unmarked people that already have a packed meal
-    packedMeals.forEach((packedMeal) => {
-      packedMeal.forEach((user) => {
-        unmarked = unmarked.filter(
-          (unmarkedUser) => unmarkedUser._id.toString() !== user._id.toString()
-        );
-      });
-    });
+    // The starting point are the meals already existing in the day object
+    const mealArrs = buildMealArraysFromDay(day);
+
+    if (isWithinAWeek(date)) { 
+      // Get meals from user matrices
+      addMealsFromUserMatrix(date, users, mealArrs);
+    }
+
+    checkUnmarkedUsers(users, mealArrs);
+
 
     allMeals = {
-      meals: day?.meals ? day.meals : meals,
-      packedMeals: day?.packedMeals ? day.packedMeals : packedMeals,
-      noMeals: day?.noMeals ? day.noMeals : noMeals,
-      unmarked: unmarked,
+      meals: mealArrs.meals,
+      packedMeals: mealArrs.packedMeals,
+      noMeals: mealArrs.noMeals,
+      unmarked: mealArrs.unmarked,
     };
 
     addGuests(day, allMeals);
@@ -88,6 +80,72 @@ export async function POST(req, res) {
   }
 }
 
+const buildMealArraysFromDay = (day) => {
+  let meals = [[], [], []];
+  let packedMeals = [[], [], []];
+  let noMeals = [];
+
+  if (day && day.meals) meals = day.meals;
+  if (day && day.packedMeals) packedMeals = day.packedMeals;
+  if (day && day.noMeals) noMeals = day.noMeals;
+
+  return {
+    meals,
+    packedMeals,
+    noMeals,
+    unmarked: [],
+  }
+}
+
+const addMealsFromUserMatrix = (date, users, mealArrs) => {
+
+  // Monday is index 0
+  let dateIndex = date.getDay() - 1;
+  if (dateIndex < 0) dateIndex = 6;
+
+  users.forEach((user) => {
+    if (!user.meals) return;
+    if (user.meals[dateIndex][6]) {
+      mealArrs.noMeals.push(constructMealUserObject(user));
+      return
+    }
+    user.meals[dateIndex].forEach((meal, index) => {
+      if (meal) {
+        if (index < 3) {
+          console.log(mealArrs)
+          if (!mealArrs.meals[index].find((element) => element._id.toString() === user._id.toString()))
+            mealArrs.meals[index].push(constructMealUserObject(user));
+        } else {
+          if (!mealArrs.packedMeals[index - 3].find((element) => element._id.toString() === user._id.toString()))
+            mealArrs.packedMeals[index - 3].push(constructMealUserObject(user));
+        }
+      }
+    });
+  });
+}
+
+const checkUnmarkedUsers = (users, mealArrs) => {
+  // construct a array containing meals, packed meals, no meals
+  const allMeals = mealArrs.meals.concat(mealArrs.packedMeals).concat([mealArrs.noMeals]);
+
+  users.forEach((user) => {
+    // If the user is not signed up for meals or packed meals, mark as unmarked
+    let isMarked = false;
+
+    allMeals.forEach((meal) => {
+      if (meal.find((element) => element._id.toString() === user._id.toString())) {
+        isMarked = true;
+      }
+    });
+
+    if (!isMarked) {
+      mealArrs.unmarked.push(constructMealUserObject(user));
+    }
+  });
+}
+
+
+
 // For adding users and guests as an admin
 export async function PATCH(req, res) {
   const [body] = await Promise.all([req.json(), connectDB()]);
@@ -108,8 +166,19 @@ export async function PATCH(req, res) {
   if (!day) {
     day = new Day({
       date: body.date,
+      meals: [[], [], []],
+      packedMeals: [[], [], []],
+      guests: [],
+      noMeals: [],
     });
-    console.log("creating new day");
+  } else if (!day.meals) {
+    day.meals = [[], [], []];
+  } else if (!day.packedMeals) {
+    day.packedMeals = [[], [], []];
+  } else if (!day.guests) {
+    day.guests = [];
+  } else if (!day.noMeals) {
+    day.noMeals = [];
   }
 
   if (body.guest) {
@@ -128,36 +197,56 @@ export async function PATCH(req, res) {
     console.log("adding users");
     const mealsIndex = MEALS.indexOf(body.meal);
 
+    console.log("mealsIndex: ", mealsIndex);
     if (mealsIndex < 3) {
       // Meals are standard meals
-      users.forEach((user) => {
+      users.forEach(async (user) => {
         let existingElement = day.meals[mealsIndex].find(
-          (element) => element._id.toString() === user
+          (element) => element._id.toString() === user._id.toString()
         );
+
         if (!existingElement) {
+        if (isWithinAWeek(reconstructDate(body.date)) && !(isToday(reconstructDate(body.date)) && isNowPastUpdateTime())) {
+          const userObject = await User.findById(user._id);
+          userObject.meals[getAppDayIndex(reconstructDate(body.date))][mealsIndex] = true;
+          userObject.markModified("meals");
+          userObject.save();
+        } else {
+          console.log("adding to day object instead")
           day.meals[mealsIndex].push({
             _id: user._id,
             diet: user.diet,
             name: user.firstName + " " + user.lastName,
           });
         }
+      }
+
       });
       day.markModified("meals");
     } else {
       // packed meals
-      users.forEach((user) => {
-        let existingElement = day.packedMeals[mealsIndex - 3].find(
-          (element) => element._id.toString() === user
-        );
-        if (!existingElement) {
+      users.forEach(async (user) => {
+        
+        if (isWithinAWeek(reconstructDate(body.date)) && !(isTomorrow(reconstructDate(body.date)) && isNowPastUpdateTime())) {
+          const userObject = await User.findById(user._id);
+          userObject.meals[getAppDayIndex(reconstructDate(body.date))][mealsIndex] = true;
+          console.log("setting to true: ", mealsIndex)
+          userObject.markModified("meals");
+          userObject.save();
+        } else {
+          console.log("adding to day object instead")
           day.packedMeals[mealsIndex - 3].push({
             _id: user._id,
             diet: user.diet,
             name: user.firstName + " " + user.lastName,
           });
         }
+
       });
       day.markModified("packedMeals");
+
+      
+
     }
 
     // remove all users from the noMeals array
@@ -226,11 +315,13 @@ const addGuests = (day, allMeals) =>
       allMeals.meals[guest.meal].push({
         name: guest.name,
         diet: guest.diet,
+        _id: "_GUEST_" + guest.name,
       });
     } else {
       allMeals.packedMeals[guest.meal - 3].push({
         name: guest.name,
         diet: guest.diet,
+        _id: "_GUEST_" + guest.name,
       });
     }
   });

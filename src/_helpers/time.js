@@ -35,10 +35,6 @@ export const getNextUpdateTime = () => {
   return [nextUpdateTime, disabledDayIndex];
 };
 
-export const getUpdateTimeToday = () => {
-  const nextUpdateTime = new Date();
-
-}
 
 export const todayDate = () => {
   const today = new Date();
@@ -80,16 +76,12 @@ export const isBeforeUpdateTime = (date) => {
   );
 
   todayUpdatetime.setUTCMinutes(process.env.UPDATE_TIME.slice(2));
-  todayUpdatetime.setUTCSeconds(0);
-  todayUpdatetime.setUTCMilliseconds(0);
 
-  console.log("utc hours: ", date.getUTCHours());
 
   if (
     todayUpdatetime.getTime() > date.getTime() &&
     date.getUTCHours() > 4
   ) {
-    console.log("before update time");
     return true;
   } else {
     return false;
@@ -118,6 +110,18 @@ export const isWithin5Days = (date) => {
   else return false;
 }
 
+export const isWithinAWeek = (date) => {
+  var today = new Date();
+  var in7days = new Date(
+    today.getFullYear(),
+    today.getMonth(),
+    // today.getDate() + (isBeforeUpdateTime(today) ? 7 : 8),
+    today.getDate() + 7
+  );
+  if (date <= in7days) return true;
+  else return false;
+}
+
 export const hasDayUpdated = (date) => {
   // modify hours and minutes to match the current time
   const now = new Date();
@@ -133,4 +137,59 @@ export const hasDayUpdated = (date) => {
   } else {
     return false;
   }
+}
+
+export const getAppDayIndex = (date) => {
+  let dayIndex = date.getDay() - 1;
+
+  if (dayIndex < 0) {
+    dayIndex = 6;
+  }
+
+  return dayIndex;
+}
+
+export const isTodayAndAfterUpdateTime = (date) => {
+  const today = new Date();
+
+  if (date.getDay() != today.getDay()) {
+    return false;
+  }
+
+  if (isBeforeUpdateTime(date)) {
+    return false;
+  }
+
+  return true;
+}
+
+export const isToday = (date) => {
+  const today = new Date();
+
+  if (date.getDay() != today.getDay()) {
+    return false;
+  }
+
+  return true;
+}
+
+export const isNowPastUpdateTime = () => {
+  const now = new Date();
+
+  if (isBeforeUpdateTime(now)) {
+    return false;
+  }
+
+  return true;
+}
+
+export const isTomorrow = (date) => {
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+
+  if (date.getDay() != tomorrow.getDay()) {
+    return false;
+  }
+
+  return true;
 }

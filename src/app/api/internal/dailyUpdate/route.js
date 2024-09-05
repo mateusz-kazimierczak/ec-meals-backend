@@ -4,6 +4,7 @@ import Day from "@/_helpers/db/models/Day";
 import { NextRequest } from "next/server";
 import { sendMealEmails } from "@/_helpers/emails";
 import { dayString } from "@/_helpers/time";
+import next from "next";
 
 export async function GET() {
   // Check that update date is close enough:
@@ -24,29 +25,44 @@ export async function GET() {
   if (nextDayIndex === -1) nextDayIndex = 6;
 
   const TodayString = dayString();
-
   const TomorrowString = dayString(tomorrowDate);
+
+  // Date strings next week
+  const NextWeekTodayString = dayString(new Date(todayDate.setDate(todayDate.getDate() + 7)));
+  const NextWeekTomorrowString = dayString(new Date(tomorrowDate.setDate(tomorrowDate.getDate() + 7)));
 
   const [users, days] = await Promise.all([
     User.find(
       { active: true },
       "name meals preferences email firstName lastName diet"
     ),
-    Day.find({ date: { $in: [TodayString, TomorrowString] } }),
+    Day.find({ date: { $in: [TodayString, TomorrowString, NextWeekTodayString, NextWeekTomorrowString] } }),
   ]);
 
   let today = days.filter((day) => day.date === TodayString)[0];
   let tomorrow = days.filter((day) => day.date === TomorrowString)[0];
 
+  let nextWeekToday = days.filter((day) => day.date === NextWeekTodayString)[0];
+  let nextWeekTomorrow = days.filter((day) => day.date === NextWeekTomorrowString)[0];
+
   // If the today and yesterday are not in the database, create them
   if (!today) {
     today = new Day({
       date: TodayString,
+      meals: [[], [], []],
+      packedMeals: [[], [], []],
+      guests: [],
+      unmarked: [],
+
     });
   }
   if (!tomorrow) {
     tomorrow = new Day({
       date: TomorrowString,
+      meals: [[], [], []],
+      packedMeals: [[], [], []],
+      guests: [],
+      unmarked: [],
     });
   }
 
@@ -71,12 +87,32 @@ export async function GET() {
         }
       });
 
+
       user.meals[nextDayIndex].slice(3, 6).forEach((meal, index) => {
         // Check every packed meal on that day
         if (meal) {
           packedMeals[index].push(constructMealUserObject(user));
         }
       });
+
+      
+
+      if (nextWeekToday) {
+        // check the day object to see if the user has already been marked for a meal
+        nextWeekToday.meals.forEach((meal, index) => {
+          meal.forEach((userMeal) => {
+            if (userMeal._id.toString() === user._id.toString()) {
+              nextWeekToday.meals[index].splice(
+                nextWeekToday.meals[index].indexOf(userMeal),
+                1
+              );
+              nextWeekToday.markModified("meals");
+              user.meals[dayIndex][index] = true;
+              return;
+            }
+          });
+        })
+      }
 
       const mealsToday = user.meals[dayIndex];
       const mealsTomorrow = user.meals[nextDayIndex];
@@ -116,12 +152,6 @@ export async function GET() {
         });
       }
 
-      console.log(
-        "day meals: ",
-        user.meals[dayIndex],
-        user.meals[dayIndex].slice(3)
-      );
-
       // remove current meals
       user.meals[dayIndex] = [false, false, false].concat(
         user.meals[dayIndex].slice(3)
@@ -136,17 +166,50 @@ export async function GET() {
     })
   );
 
-  today.meals = meals;
-  tomorrow.packedMeals = packedMeals;
-  today.unmarked = unmarked;
+  console.log("before today: ", today);
+  console.log("meals: ", meals);
+  addMealsToDays(today, tomorrow, meals, packedMeals, unmarked);
+  console.log("after today: ", today);
 
-  await Promise.all([today.save(), tomorrow.save(), sendMealEmails(emails)]);
+  await Promise.all([today.save(), tomorrow.save(), sendMealEmails(emails), 
+    saveIfExists(nextWeekToday), saveIfExists(nextWeekTomorrow)
+  ]);
   console.log("Meals updated");
 
   return Response.json({
     message: "OK",
   });
 }
+
+const addMealsToDays = (today, tomorrow, meals, packedMeals, unmarked) => {
+
+  let modifiedToday, modifiedTomorrow = false;
+
+  today.meals.forEach((meal, index) => {
+    today.meals[index] = today.meals[index].concat(meals[index]);
+    modifiedToday = true;
+  });
+
+
+  tomorrow.packedMeals.forEach((meal, index) => {
+    tomorrow.packedMeals[index] = tomorrow.packedMeals[index].concat(packedMeals[index]); 
+    modifiedTomorrow = true;
+  });
+
+  today.unmarked = unmarked;
+
+  if (modifiedToday) today.markModified("meals");
+  if (modifiedTomorrow) tomorrow.markModified("packedMeals");
+}
+
+const saveIfExists = async (data) => {
+  if (data) {
+    await data.save();
+    console.log("Saved next week");
+    console.log(data);
+  }
+  
+};
 
 const constructMealUserObject = (user) => {
   return {
