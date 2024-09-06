@@ -162,7 +162,7 @@ export async function GET() {
         .concat([false, false, false]);
 
       user.markModified("meals");
-      await user.save();
+      
     })
   );
 
@@ -172,6 +172,9 @@ export async function GET() {
     saveIfExists(nextWeekToday), saveIfExists(nextWeekTomorrow)
   ]);
   console.log("Meals updated");
+
+  // Only save the users if the meals have been updated
+  await Promise.all(users.map((user) => user.save()));
 
   return Response.json({
     message: "OK",
