@@ -182,6 +182,8 @@ const addMealsToDays = (today, tomorrow, meals, packedMeals, unmarked) => {
 
   let modifiedToday, modifiedTomorrow = false;
 
+  if (!today.meals) today.meals = [[], [], []];
+
   today.meals.forEach((meal, index) => {
     today.meals[index] = today.meals[index].concat(meals[index]);
     modifiedToday = true;
