@@ -115,8 +115,8 @@ export const isWithinAWeek = (date) => {
   var in7days = new Date(
     today.getFullYear(),
     today.getMonth(),
-    // today.getDate() + (isBeforeUpdateTime(today) ? 7 : 8),
-    today.getDate() + 7
+    today.getDate() + (isBeforeUpdateTime(today) ? 7 : 8),
+    //today.getDate() + 7
   );
   if (date <= in7days) return true;
   else return false;
@@ -166,7 +166,7 @@ export const isTodayAndAfterUpdateTime = (date) => {
 export const isToday = (date) => {
   const today = new Date();
 
-  if (date.getDay() != today.getDay()) {
+  if (date.getUTCDate() != today.getUTCDate() || date.getUTCMonth() != today.getUTCMonth()) {
     return false;
   }
 
@@ -188,6 +188,18 @@ export const isTomorrow = (date) => {
   tomorrow.setDate(tomorrow.getDate() + 1);
 
   if (date.getDay() != tomorrow.getDay()) {
+    return false;
+  }
+
+  return true;
+}
+
+export const isNDaysFromNow = (date, n) => {
+  const today = new Date();
+  const nDaysFromNow = new Date();
+  nDaysFromNow.setDate(today.getDate() + n);
+
+  if (date.getUTCDate() != nDaysFromNow.getUTCDate() || date.getUTCMonth() != nDaysFromNow.getUTCMonth()) {
     return false;
   }
 

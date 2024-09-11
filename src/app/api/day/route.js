@@ -2,7 +2,7 @@ import connectDB from "@/_helpers/db/connect";
 import User from "@/_helpers/db/models/User";
 import Day from "@/_helpers/db/models/Day";
 import mongoose from "mongoose";
-import { getNextUpdateTime, reconstructDate, isWithin5Days, isWithinAWeek, getAppDayIndex, isToday, isNowPastUpdateTime, isTomorrow } from "@/_helpers/time";
+import { getNextUpdateTime, reconstructDate, isWithin5Days, isWithinAWeek, getAppDayIndex, isToday, isNowPastUpdateTime, isTomorrow, isBeforeUpdateTime, isNDaysFromNow } from "@/_helpers/time";
 import { parse } from "path";
 
 export async function POST(req, res) {
@@ -19,20 +19,24 @@ export async function POST(req, res) {
 
   // Get the actual data from the string
   const date = reconstructDate(body.date);
+  const now = new Date();
 
-
-  date.setUTCHours(parseInt(process.env.UPDATE_TIME.slice(0, 2)) + 4, parseInt(process.env.UPDATE_TIME.slice(2, 4)));
+  date.setUTCHours(now.getUTCHours(), now.getUTCMinutes());
 
   let allMeals;
 
   if (date > new Date()) {
+
 
     // The starting point are the meals already existing in the day object
     const mealArrs = buildMealArraysFromDay(day);
 
     if (isWithinAWeek(date)) { 
       // Get meals from user matrices
-      addMealsFromUserMatrix(date, users, mealArrs);
+      const getPackedMeals = !isToday(date)
+      // const getNormalMeals = !isNDaysFromNow(date, 7);
+      // console.log("Getting meals from user matrices", getNormalMeals);
+      addMealsFromUserMatrix(date, users, mealArrs, getPackedMeals);
     }
 
     checkUnmarkedUsers(users, mealArrs);
@@ -97,7 +101,7 @@ const buildMealArraysFromDay = (day) => {
   }
 }
 
-const addMealsFromUserMatrix = (date, users, mealArrs) => {
+const addMealsFromUserMatrix = (date, users, mealArrs, getPackedMeals = true, getNormalMeals = true) => {
 
   // Monday is index 0
   let dateIndex = date.getDay() - 1;
@@ -111,11 +115,10 @@ const addMealsFromUserMatrix = (date, users, mealArrs) => {
     }
     user.meals[dateIndex].forEach((meal, index) => {
       if (meal) {
-        if (index < 3) {
-          console.log(mealArrs)
+        if (index < 3 && getNormalMeals) {
           if (!mealArrs.meals[index].find((element) => element._id.toString() === user._id.toString()))
             mealArrs.meals[index].push(constructMealUserObject(user));
-        } else {
+        } else if (getPackedMeals) {
           if (!mealArrs.packedMeals[index - 3].find((element) => element._id.toString() === user._id.toString()))
             mealArrs.packedMeals[index - 3].push(constructMealUserObject(user));
         }
@@ -182,7 +185,6 @@ export async function PATCH(req, res) {
   }
 
   if (body.guest) {
-    console.log("adding guest");
     day.guests.push({
       meal: body.meal,
       name: body.guest.name,
@@ -194,10 +196,8 @@ export async function PATCH(req, res) {
       code: "ok",
     });
   } else {
-    console.log("adding users");
     const mealsIndex = MEALS.indexOf(body.meal);
 
-    console.log("mealsIndex: ", mealsIndex);
     if (mealsIndex < 3) {
       // Meals are standard meals
       users.forEach(async (user) => {
@@ -212,7 +212,6 @@ export async function PATCH(req, res) {
           userObject.markModified("meals");
           userObject.save();
         } else {
-          console.log("adding to day object instead")
           day.meals[mealsIndex].push({
             _id: user._id,
             diet: user.diet,
@@ -230,11 +229,9 @@ export async function PATCH(req, res) {
         if (isWithinAWeek(reconstructDate(body.date)) && !(isTomorrow(reconstructDate(body.date)) && isNowPastUpdateTime())) {
           const userObject = await User.findById(user._id);
           userObject.meals[getAppDayIndex(reconstructDate(body.date))][mealsIndex] = true;
-          console.log("setting to true: ", mealsIndex)
           userObject.markModified("meals");
           userObject.save();
         } else {
-          console.log("adding to day object instead")
           day.packedMeals[mealsIndex - 3].push({
             _id: user._id,
             diet: user.diet,
@@ -263,9 +260,6 @@ export async function PATCH(req, res) {
 
     await day.save();
 
-    console.log(body);
-    console.log(JSON.stringify(day));
-    console.log(day.meals[0]);
 
     return Response.json({
       code: "ok",
