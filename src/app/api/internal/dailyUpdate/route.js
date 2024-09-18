@@ -164,6 +164,8 @@ export async function GET() {
           .concat([false, false, false]);
 
         user.markModified("meals");
+      } else {
+        console.log("Persisting meals");
       }
       
       

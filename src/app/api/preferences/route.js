@@ -29,6 +29,7 @@ export async function POST(req, res) {
   const forUser_ID = req.headers.get("user_id");
 
   let ID;
+  const isAdmin = req.headers.get("userRole") === "admin";
 
   if (forUser_ID != "undefined") {
     if (req.headers.get("userRole") !== "admin") {
@@ -44,11 +45,21 @@ export async function POST(req, res) {
 
   const pref = await req.json();
 
-  console.log(pref);
+  const oldPref = await User.findById(ID, "preferences");
 
-  const data = await User.findByIdAndUpdate(ID, {
-    preferences: pref,
-  });
+  
+  console.log(pref);
+  oldPref.preferences.email = pref.email;
+  oldPref.preferences.allowNextWeek = pref.allowNextWeek;
+
+  if (isAdmin) {
+    oldPref.preferences.persistMeals = pref.persistMeals;
+  }
+  
+  oldPref.markModified("preferences");
+
+
+  await oldPref.save();
 
   return Response.json({
     message: "OK",

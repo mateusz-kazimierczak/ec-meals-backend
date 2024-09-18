@@ -31,7 +31,7 @@ export async function POST(req, res) {
 
   // Do some validation here
   const user = await User.findOne({ username: username })
-    .select("hash username active role")
+    .select("hash username active role preferences")
     .catch((e) => {
       // Do some more error hanlding here
       return NextResponse.json({ error: "user not found" }, { status: 404 });
@@ -63,7 +63,7 @@ export async function POST(req, res) {
 
   console.log("success login");
 
-  return NextResponse.json({ token, username: user.username, role: user.role });
+  return NextResponse.json({ token, username: user.username, role: user.role, preferences: user.preferences });
 }
 
 // Register handler
