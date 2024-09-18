@@ -99,6 +99,7 @@ export async function GET() {
 
       if (nextWeekToday) {
         // check the day object to see if the user has already been marked for a meal
+        console.log(nextWeekToday.meals);
         nextWeekToday.meals.forEach((meal, index) => {
           meal.forEach((userMeal) => {
             if (userMeal._id.toString() === user._id.toString()) {
@@ -152,16 +153,19 @@ export async function GET() {
         });
       }
 
-      // remove current meals
-      user.meals[dayIndex] = [false, false, false].concat(
-        user.meals[dayIndex].slice(3)
-      );
+      if (!user.preferences.persistMeals) {
+        // remove current meals
+        user.meals[dayIndex] = [false, false, false].concat(
+          user.meals[dayIndex].slice(3)
+        );
 
-      user.meals[nextDayIndex] = user.meals[nextDayIndex]
-        .slice(0, 3)
-        .concat([false, false, false]);
+        user.meals[nextDayIndex] = user.meals[nextDayIndex]
+          .slice(0, 3)
+          .concat([false, false, false]);
 
-      user.markModified("meals");
+        user.markModified("meals");
+      }
+      
       
     })
   );
