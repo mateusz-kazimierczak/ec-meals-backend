@@ -2,7 +2,7 @@ import connectDB from "@/_helpers/db/connect";
 import User from "@/_helpers/db/models/User";
 import Day from "@/_helpers/db/models/Day";
 import mongoose from "mongoose";
-import { getNextUpdateTime, reconstructDate, isWithin5Days, isWithinAWeek, getAppDayIndex, isToday, isNowPastUpdateTime, isTomorrow, isBeforeUpdateTime, isNDaysFromNow } from "@/_helpers/time";
+import { getNextUpdateTime, reconstructDate, isWithin5Days, isWithinAWeek, getAppDayIndex, isToday, isNowPastUpdateTime, isTomorrow, isBeforeUpdateTime, isNDaysFromNow, TIMEZONE_CONSTANT } from "@/_helpers/time";
 import { parse } from "path";
 
 export async function POST(req, res) {
@@ -21,13 +21,22 @@ export async function POST(req, res) {
   const date = reconstructDate(body.date);
   const now = new Date();
 
-  date.setUTCHours(now.getUTCHours(), now.getUTCMinutes());
+  
+
+  date.setUTCHours(
+    parseInt(process.env.UPDATE_TIME.slice(0, 2)) - TIMEZONE_CONSTANT
+  );
+
+  date.setUTCMinutes(process.env.UPDATE_TIME.slice(2));
 
   let allMeals;
 
+  console.log("Date", date);
+  console.log("Now", now);
+
   if (date > new Date()) {
 
-
+    console.log("Date is in the future");
     // The starting point are the meals already existing in the day object
     const mealArrs = buildMealArraysFromDay(day);
 
@@ -57,6 +66,8 @@ export async function POST(req, res) {
       status: "prediction",
     });
   } else {
+
+    console.log("Date is in the past");
     // If the date is in the past, and a report already exists, return the report
 
     if (!day) {

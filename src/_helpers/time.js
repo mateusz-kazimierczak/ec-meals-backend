@@ -1,4 +1,4 @@
-const TIMEZONE_CONSTANT = -4;
+export const TIMEZONE_CONSTANT = -4;
 
 export const getNextUpdateTime = () => {
   const nextUpdateTime = new Date();
