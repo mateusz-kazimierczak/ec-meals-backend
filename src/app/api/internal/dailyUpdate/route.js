@@ -174,9 +174,12 @@ export async function GET() {
 
   addMealsToDays(today, tomorrow, meals, packedMeals, unmarked);
 
-  await Promise.all([today.save(), tomorrow.save(), sendMealEmails(emails), 
+  await Promise.all([today.save(), tomorrow.save(),
     saveIfExists(nextWeekToday), saveIfExists(nextWeekTomorrow)
   ]);
+
+  // Temporarily disable sending emails, because timeout is reached
+  //await sendMealEmails(emails);
   console.log("Meals updated");
 
   // Only save the users if the meals have been updated
