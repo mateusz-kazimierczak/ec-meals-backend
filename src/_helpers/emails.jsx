@@ -26,16 +26,19 @@ export const sendMealEmails = async (users) => {
 
     console.log("Sending meal emails to ", users.length, " users");
     if (users.length === 0) return;
-    await resend.batch.send(
-      users.map((user) => ({
-        from: 'Meals <meals@mateusz.us>',
-        to: [user.email],
-        subject: user.warning ? "!! No meals for tomorrow !!" : "Meal update",
-        react: <DailyEmail name={user.name} noMealsWarning={user.warning} todayMeals={user.todayMeals} tomorrowMeals={user.tomorrowMeals} />,
-      }))
-    ).then((res) => {
-      console.log("Email sent successfully", res);
-    }).catch((err) => {
-      console.log("Error sending email:", err);
-    });
+
+
+    try {
+      resend.batch.send(
+        users.map((user) => ({
+          from: 'Meals <meals@mateusz.us>',
+          to: [user.email],
+          subject: user.warning ? "!! No meals for tomorrow !!" : "Meal update",
+          react: <DailyEmail name={user.name} noMealsWarning={user.warning} todayMeals={user.todayMeals} tomorrowMeals={user.tomorrowMeals} />,
+        }))
+      )
+    } catch (err) {
+      console.log("Error sending email:", err
+      );
+    }
 }
