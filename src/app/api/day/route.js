@@ -2,7 +2,7 @@ import connectDB from "@/_helpers/db/connect";
 import User from "@/_helpers/db/models/User";
 import Day from "@/_helpers/db/models/Day";
 import mongoose from "mongoose";
-import { getNextUpdateTime, reconstructDate, isWithin5Days, isWithinAWeek, getAppDayIndex, isToday, isNowPastUpdateTime, isTomorrow, isBeforeUpdateTime, isNDaysFromNow, TIMEZONE_CONSTANT } from "@/_helpers/time";
+import { getNextUpdateTime, reconstructDate, isWithin5Days, isWithinAWeek, getAppDayIndex, isToday, isNowPastUpdateTime, isTomorrow, isBeforeUpdateTime, isNDaysFromNow, GET_TIMEZONE_CONSTANT } from "@/_helpers/time";
 import { parse } from "path";
 
 export async function POST(req, res) {
@@ -24,7 +24,7 @@ export async function POST(req, res) {
   
 
   date.setUTCHours(
-    parseInt(process.env.UPDATE_TIME.slice(0, 2)) - TIMEZONE_CONSTANT
+    parseInt(process.env.UPDATE_TIME.slice(0, 2)) - GET_TIMEZONE_CONSTANT()
   );
 
   date.setUTCMinutes(process.env.UPDATE_TIME.slice(2));
