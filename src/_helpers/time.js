@@ -1,4 +1,19 @@
-export const TIMEZONE_CONSTANT = -4;
+export const NDS_TIMEZONE_CONSTANT = -4;
+export const DS_TIMEZONE_CONSTANT = -5;
+
+export const GET_TIMEZONE_CONSTANT = () => {
+  const now = new Date();
+
+  // Check if there is daylight saving time (between Nov 3 and Mar 10)
+  const start = new Date(now.getFullYear(), 10, 3);
+  const end = new Date(now.getFullYear(), 2, 9);
+
+  if (now > start || now < end) {
+    return DS_TIMEZONE_CONSTANT;
+  } else {
+    return NDS_TIMEZONE_CONSTANT;
+  }
+}
 
 export const getNextUpdateTime = () => {
   const nextUpdateTime = new Date();
@@ -6,7 +21,7 @@ export const getNextUpdateTime = () => {
 
 
   nextUpdateTime.setUTCHours(
-    parseInt(process.env.UPDATE_TIME.slice(0, 2)) - TIMEZONE_CONSTANT
+    parseInt(process.env.UPDATE_TIME.slice(0, 2)) - GET_TIMEZONE_CONSTANT()
   );
 
   nextUpdateTime.setUTCMinutes(process.env.UPDATE_TIME.slice(2));
@@ -15,7 +30,7 @@ export const getNextUpdateTime = () => {
 
   const now = new Date();
 
-  if (isBeforeUpdateTime(now) || now.getUTCHours() + TIMEZONE_CONSTANT < 0) {
+  if (isBeforeUpdateTime(now) || now.getUTCHours() + GET_TIMEZONE_CONSTANT() < 0) {
     disabledDayIndex = nextUpdateTime.getUTCDay() - 1;
   } else {
     disabledDayIndex = nextUpdateTime.getUTCDay();
@@ -38,7 +53,7 @@ export const getNextUpdateTime = () => {
 
 export const todayDate = () => {
   const today = new Date();
-  const newHour = today.getHours() + TIMEZONE_CONSTANT;
+  const newHour = today.getHours() + GET_TIMEZONE_CONSTANT();
 
   if (newHour < 0) {
     today.setDate(today.getDate() - 1);
@@ -72,7 +87,7 @@ export const isBeforeUpdateTime = (date) => {
   const todayUpdatetime = new Date();
 
   todayUpdatetime.setUTCHours(
-    parseInt(process.env.UPDATE_TIME.slice(0, 2)) - TIMEZONE_CONSTANT
+    parseInt(process.env.UPDATE_TIME.slice(0, 2)) - GET_TIMEZONE_CONSTANT()
   );
 
   todayUpdatetime.setUTCMinutes(process.env.UPDATE_TIME.slice(2));

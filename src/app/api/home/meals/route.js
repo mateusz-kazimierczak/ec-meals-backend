@@ -7,6 +7,7 @@ import {
   tomorrowDate,
   dayString,
   getNextUpdateTime,
+  GET_TIMEZONE_CONSTANT
 } from "@/_helpers/time";
 
 export const dynamic = "force-dynamic";
@@ -34,7 +35,7 @@ const getUserMeals = async (forUser) => {
   const todayUpdate = new Date(dateToday);
 
   todayUpdate.setUTCHours(
-    parseInt(process.env.UPDATE_TIME.slice(0, 2)) + 4, // TODO: get this from env variable
+    parseInt(process.env.UPDATE_TIME.slice(0, 2)) - GET_TIMEZONE_CONSTANT(), // TODO: get this from env variable
     parseInt(process.env.UPDATE_TIME.slice(2)),
     0,
     0
@@ -42,7 +43,7 @@ const getUserMeals = async (forUser) => {
 
   const utcHour = new Date().getUTCHours();
 
-  if (todayUpdate.getTime() < new Date().getTime() || utcHour < 4) {
+  if (todayUpdate.getTime() < new Date().getTime() || utcHour < - GET_TIMEZONE_CONSTANT()) {
     // After update time today
     // fetch meals from database
 
