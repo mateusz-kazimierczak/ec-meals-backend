@@ -1,6 +1,7 @@
 import connectDB from "@/_helpers/db/connect";
 import User from "@/_helpers/db/models/User";
 import Day from "@/_helpers/db/models/Day";
+import moment from "moment-timezone"
 
 const HOUROFFSET =  -4;
 
@@ -19,9 +20,14 @@ import { checkUsersMeals } from "../../day/route"
 export async function GET(req, res) { 
     await connectDB();
 
-    // Decide which meals to send
+    
     const currentTime = new Date();
-    let currHour = currentTime.getUTCHours() + HOUROFFSET;
+    // Convert to Toronto time
+    const timeToronto = moment(currentTime).tz("America/Toronto");
+
+    // Get the hour in Toronto time
+    let currHour = timeToronto.hour();
+
 
     if (currHour < 0) {
         currHour += 24;
