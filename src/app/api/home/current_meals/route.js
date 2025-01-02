@@ -29,9 +29,6 @@ export async function GET(req, res) {
     let currHour = timeToronto.hour();
 
 
-    if (currHour < 0) {
-        currHour += 24;
-    }
 
     // Before the update time, need to handle the request differently by collecting all the breakfast from db
     if (isBeforeUpdateTime(currentTime)) {
@@ -47,7 +44,14 @@ export async function GET(req, res) {
     // Get todays meals
     
     const [dateToday, todayIndex] = todayDate();
-    const meals = (await Day.findOne({ date: dayString(dateToday) }, "meals")).meals;
+    console.log("Today index: ", dayString(dateToday));
+    const todayObject = await Day.findOne({ date: dayString(dateToday) }, "meals");
+
+    if (!todayObject) {
+        return Response.json({ message: "No meals found for today" }, { status: 404 }); 
+    }
+
+    const meals = todayObject.meals;
 
     
     if (currHour < 9) {
@@ -83,4 +87,14 @@ const getAllUsersBreakfast = async (dayIndex) => {
     });
 
     return breakfast;
+}
+
+const addGuests = (meal, guests, meals) => {
+    guests.forEach(guest => {
+        if (guest.meal === meal) {
+            meals.push({name: guest.name, diet: guest.diet});
+        }
+    });
+
+    return meal;
 }

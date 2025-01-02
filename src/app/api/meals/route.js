@@ -3,6 +3,7 @@ import User from "@/_helpers/db/models/User";
 import { cookies } from "next/headers";
 
 import { getNextUpdateTime } from "@/_helpers/time";
+import moment from "moment-timezone";
 
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
@@ -31,8 +32,8 @@ export async function GET(req, res) {
   return Response.json({
     meals: data.meals,
     firstName: data.firstName,
-    currTime: new Date().getTime(),
-    updateTime: updateTime.getTime(),
+    currTime: moment(new Date()).valueOf(),
+    updateTime: updateTime.valueOf(),
     disabledDay,
   });
 }

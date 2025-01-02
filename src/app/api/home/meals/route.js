@@ -27,19 +27,27 @@ const getUserMeals = async (forUser) => {
   // Get update time today
   const current_time = new Date();
   const time_toronto = moment(current_time).tz("America/Toronto");
+  const tomorrow_time_toronto = time_toronto.clone().add(1, "day");
+
+  debugger;
 
   // Set the hour in Toronto time
-  let update_time = time_toronto.set({ hour: process.env.UPDATE_TIME.slice(0, 2), minute: process.env.UPDATE_TIME.slice(2) });
+  let update_time = time_toronto.clone().set({ hour: process.env.UPDATE_TIME.slice(0, 2), minute: process.env.UPDATE_TIME.slice(2) });
 
 
   if (current_time > update_time) {
     // After update time today
     // fetch meals from database
 
+    debugger;
+
+    console.log("after update time", current_time, update_time);
+
+
     const [today, thisUser, tomorrow] = await Promise.all([
-      Day.findOne({ date: time_toronto.format("DD/MM/YYYY") }, "meals packedMeals"), // get meals for today. Both packed and normal
+      Day.findOne({ date: time_toronto.format("D/M/YYYY") }, "meals packedMeals"), // get meals for today. Both packed and normal
       User.findById(forUser, "meals"), // The user object has normal meals for tomorrow
-      Day.findOne({ date: time_toronto.add(1, "days").format("DD/MM/YYYY") }, "packedMeals"), // For packed meals for tomorrow, you need the day object
+      Day.findOne({ date: tomorrow_time_toronto.format("D/M/YYYY") }, "packedMeals"), // For packed meals for tomorrow, you need the day object
     ]);
 
 
@@ -58,7 +66,7 @@ const getUserMeals = async (forUser) => {
 
     todayMeals = todayNormalMeals.concat(todayPackedMeals);
 
-    const tomorrowNormalMeals = thisUser.meals[time_toronto.add(1, "day").day()].slice(0, 3);
+    const tomorrowNormalMeals = thisUser.meals[tomorrow_time_toronto.isoWeekday() - 1].slice(0, 3);
 
     const tomorrowPackedMeals = getMealsFromDayObject(
       forUser,
@@ -69,11 +77,15 @@ const getUserMeals = async (forUser) => {
     tomorrowMeals = tomorrowNormalMeals.concat(tomorrowPackedMeals);
   } else {
     // fetch meals from user object
+
+    debugger;
+
+    console.log("before update time", current_time, update_time);
     
 
     const [thisUser, today] = await Promise.all([
       User.findById(forUser, "meals"),
-      Day.findOne({ date: time_toronto.format("DD/MM/YYYY") }, "packedMeals"),
+      Day.findOne({ date: time_toronto.format("D/M/YYYY") }, "packedMeals"),
     ]);
 
 
@@ -81,7 +93,7 @@ const getUserMeals = async (forUser) => {
       return [null, null];
     }
     
-    todayMeals = thisUser.meals[time_toronto.day()].slice(0, 3); // only get normal meals,
+    todayMeals = thisUser.meals[time_toronto.isoWeekday() - 1].slice(0, 3); // only get normal meals,
     const todayPackedMeals = getMealsFromDayObject(
       forUser,
       today,
@@ -89,13 +101,14 @@ const getUserMeals = async (forUser) => {
     );
 
     todayMeals = todayMeals.concat(todayPackedMeals);
-    tomorrowMeals = thisUser.meals[time_toronto.add(1, "day").day()];
+    tomorrowMeals = thisUser.meals[tomorrow_time_toronto.isoWeekday() - 1];
   }
 
   return [todayMeals, tomorrowMeals];
 };
 
 export async function GET(req, res) {
+  
   await connectDB();
 
   const forUser = req.headers.get("userID");

@@ -6,30 +6,30 @@ import { sendMealEmails } from "@/_helpers/emails";
 import { dayString } from "@/_helpers/time";
 import next from "next";
 
+import moment from "moment-timezone";
+
+import { getAppDayIndex } from "@/_helpers/time";
+
 export async function GET() {
-  // Check that update date is close enough:
-  // i
 
   console.log("Updating meals...");
 
   await connectDB();
 
-  const todayDate = new Date();
-  const tomorrowDate = new Date();
-  tomorrowDate.setDate(tomorrowDate.getDate() + 1);
+  const todayDate = moment().tz("America/Toronto");
+  const tomorrowDate = moment().tz("America/Toronto").add(1, "days");
 
-  let dayIndex = (todayDate.getDay() - 1) % 7;
-  if (dayIndex === -1) dayIndex = 6;
+  let dayIndex = getAppDayIndex(todayDate);
+  let nextDayIndex = getAppDayIndex(tomorrowDate);
 
-  let nextDayIndex = tomorrowDate.getDay() - 1;
-  if (nextDayIndex === -1) nextDayIndex = 6;
-
-  const TodayString = dayString();
+  const TodayString = dayString(todayDate);
   const TomorrowString = dayString(tomorrowDate);
 
   // Date strings next week
-  const NextWeekTodayString = dayString(new Date(todayDate.setDate(todayDate.getDate() + 7)));
-  const NextWeekTomorrowString = dayString(new Date(tomorrowDate.setDate(tomorrowDate.getDate() + 7)));
+  const NextWeekTodayDate = moment().tz("America/Toronto").add(7, "days");
+  const NextWeekTodayString = dayString(NextWeekTodayDate);
+  const NextWeekTomorrowDate = moment().tz("America/Toronto").add(8, "days");
+  const NextWeekTomorrowString = dayString(NextWeekTomorrowDate);
 
   const [users, days] = await Promise.all([
     User.find(
