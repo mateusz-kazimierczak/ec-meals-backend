@@ -195,21 +195,32 @@ const addMealsToDays = (today, tomorrow, meals, packedMeals, unmarked) => {
 
   if (!today.meals) today.meals = [[], [], []];
 
-  today.meals.forEach((meal, index) => {
-    today.meals[index] = today.meals[index].concat(meals[index]);
-    modifiedToday = true;
-  });
+  mealListMerge(today.meals, meals);
 
-
-  tomorrow.packedMeals.forEach((meal, index) => {
-    tomorrow.packedMeals[index] = tomorrow.packedMeals[index].concat(packedMeals[index]); 
-    modifiedTomorrow = true;
-  });
+  mealListMerge(tomorrow.packedMeals, packedMeals);
 
   today.unmarked = unmarked;
 
-  if (modifiedToday) today.markModified("meals");
-  if (modifiedTomorrow) tomorrow.markModified("packedMeals");
+  today.markModified("meals");
+  tomorrow.markModified("packedMeals");
+}
+
+const mealListMerge = (meals, newMeals) => {
+  // Merges the meals and new Meals, but only if the user is not already in the list
+
+  // Go over all types of meals, and compare to the new meals
+  meals.forEach((meal, index) => {
+    newMeals[index].forEach((newMeal) => {
+      // Search for the same user in the meal list based on the ID
+      const found = meal.find((meal) => meal._id.toString() === newMeal._id.toString());
+
+
+      // If the user is not found, add them to the meal list
+      if (!found) {
+        meal.push(newMeal);
+      }
+    });
+  });
 }
 
 const saveIfExists = async (data) => {
