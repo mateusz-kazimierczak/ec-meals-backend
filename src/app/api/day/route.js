@@ -2,8 +2,9 @@ import connectDB from "@/_helpers/db/connect";
 import User from "@/_helpers/db/models/User";
 import Day from "@/_helpers/db/models/Day";
 import mongoose from "mongoose";
-import { getNextUpdateTime, reconstructDate, isWithin5Days, isWithinAWeek, getAppDayIndex, isToday, isNowPastUpdateTime, isTomorrow, isBeforeUpdateTime, isNDaysFromNow, GET_TIMEZONE_CONSTANT } from "@/_helpers/time";
+import { reconstructDate, isWithinAWeek, getAppDayIndex, isToday, isNowPastUpdateTime, isTomorrow } from "@/_helpers/time";
 import { parse } from "path";
+import moment from "moment-timezone";
 
 export async function POST(req, res) {
   const [body] = await Promise.all([req.json(), connectDB()]);
@@ -17,22 +18,17 @@ export async function POST(req, res) {
       "firstName lastName meals preferences diet"
     )])
 
+
   // Get the actual data from the string
-  const date = reconstructDate(body.date);
+  console.log("sent date: ", body.date)
+  const date = moment(reconstructDate(body.date))
   const now = new Date();
-
   
+  date.set({ hour: process.env.UPDATE_TIME.slice(0, 2), minute: process.env.UPDATE_TIME.slice(2) });
 
-  date.setUTCHours(
-    parseInt(process.env.UPDATE_TIME.slice(0, 2)) - GET_TIMEZONE_CONSTANT()
-  );
-
-  date.setUTCMinutes(process.env.UPDATE_TIME.slice(2));
 
   let allMeals;
 
-  console.log("Date", date);
-  console.log("Now", now);
 
   if (date > new Date()) {
 
@@ -42,9 +38,9 @@ export async function POST(req, res) {
 
     if (isWithinAWeek(date)) { 
       // Get meals from user matrices
-      const getPackedMeals = !isToday(date)
-      // const getNormalMeals = !isNDaysFromNow(date, 7);
-      // console.log("Getting meals from user matrices", getNormalMeals);
+      const getPackedMeals = date.isSame(now, "day")
+
+
       addMealsFromUserMatrix(date, users, mealArrs, getPackedMeals);
     }
 
@@ -115,8 +111,7 @@ const buildMealArraysFromDay = (day) => {
 const addMealsFromUserMatrix = (date, users, mealArrs, getPackedMeals = true, getNormalMeals = true) => {
 
   // Monday is index 0
-  let dateIndex = date.getDay() - 1;
-  if (dateIndex < 0) dateIndex = 6;
+  let dateIndex = getAppDayIndex(date)
 
   users.forEach((user) => {
     if (!user.meals) return;
@@ -164,6 +159,8 @@ const checkUnmarkedUsers = (users, mealArrs) => {
 export async function PATCH(req, res) {
   const [body] = await Promise.all([req.json(), connectDB()]);
 
+  console.log("Adding users to day", body);
+
   let [day, users] = await Promise.all([
     Day.findOne({ date: body.date }),
     body.users &&
@@ -176,6 +173,9 @@ export async function PATCH(req, res) {
         "firstName lastName diet _id"
       ),
   ]);
+
+  console.log("Day: ", day);
+  console.log("Users: ", users);
 
   if (!day) {
     day = new Day({
@@ -216,13 +216,19 @@ export async function PATCH(req, res) {
           (element) => element._id.toString() === user._id.toString()
         );
 
+        // First check if the user to be added is already in the desired meal. If yes, do nothing
         if (!existingElement) {
+
+          console.log("is today: ", isToday(reconstructDate(body.date)));
+
         if (isWithinAWeek(reconstructDate(body.date)) && !(isToday(reconstructDate(body.date)) && isNowPastUpdateTime())) {
+          // if the date is in the future, update the user's meals matrix
           const userObject = await User.findById(user._id);
           userObject.meals[getAppDayIndex(reconstructDate(body.date))][mealsIndex] = true;
           userObject.markModified("meals");
           userObject.save();
         } else {
+          // Otherwise just add to db
           day.meals[mealsIndex].push({
             _id: user._id,
             diet: user.diet,
@@ -236,7 +242,8 @@ export async function PATCH(req, res) {
     } else {
       // packed meals
       users.forEach(async (user) => {
-        
+
+
         if (isWithinAWeek(reconstructDate(body.date)) && !(isTomorrow(reconstructDate(body.date)) && isNowPastUpdateTime())) {
           const userObject = await User.findById(user._id);
           userObject.meals[getAppDayIndex(reconstructDate(body.date))][mealsIndex] = true;
@@ -267,6 +274,7 @@ export async function PATCH(req, res) {
     day.unmarked = day.unmarked.filter(
       (element) => !body.users.includes(element._id.toString())
     );
+
     day.markModified("unmarked");
 
     await day.save();

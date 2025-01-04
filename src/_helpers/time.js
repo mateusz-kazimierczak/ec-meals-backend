@@ -1,117 +1,67 @@
 export const NDS_TIMEZONE_CONSTANT = -4;
 export const DS_TIMEZONE_CONSTANT = -5;
 
-export const GET_TIMEZONE_CONSTANT = () => {
-  const now = new Date();
+import moment from "moment-timezone";
 
-  // Check if there is daylight saving time (between Nov 3 and Mar 10)
-  const start = new Date(now.getFullYear(), 10, 3);
-  const end = new Date(now.getFullYear(), 2, 9);
 
-  if (now > start || now < end) {
-    return DS_TIMEZONE_CONSTANT;
-  } else {
-    return NDS_TIMEZONE_CONSTANT;
-  }
-}
-
-export const getNextUpdateTime = () => {
-  const nextUpdateTime = new Date();
+export const getNextUpdateTime = () => { // Fixed
   let disabledDayIndex;
+  const nextUpdateTime = moment(new Date()).tz("America/Toronto");
 
-
-  nextUpdateTime.setUTCHours(
-    parseInt(process.env.UPDATE_TIME.slice(0, 2)) - GET_TIMEZONE_CONSTANT()
-  );
-
-  nextUpdateTime.setUTCMinutes(process.env.UPDATE_TIME.slice(2));
-  nextUpdateTime.setUTCSeconds(0);
-  nextUpdateTime.setUTCMilliseconds(0);
+  nextUpdateTime.set({ hour: process.env.UPDATE_TIME.slice(0, 2), minute: process.env.UPDATE_TIME.slice(2) });
 
   const now = new Date();
 
-  if (isBeforeUpdateTime(now) || now.getUTCHours() + GET_TIMEZONE_CONSTANT() < 0) {
-    disabledDayIndex = nextUpdateTime.getUTCDay() - 1;
+  if (isBeforeUpdateTime(now)) {
+    disabledDayIndex = getAppDayIndex(nextUpdateTime.add(-1, "days"));
   } else {
-    disabledDayIndex = nextUpdateTime.getUTCDay();
-    nextUpdateTime.setDate(nextUpdateTime.getDate() + 1);
+    disabledDayIndex = getAppDayIndex(nextUpdateTime);
+    nextUpdateTime.add(1, "days");
   }
-
-  // convert to monday indexed:
-  disabledDayIndex = disabledDayIndex - 1;
-
-  if (disabledDayIndex < 0) {
-    disabledDayIndex = 7 + disabledDayIndex;
-  }
-
-  disabledDayIndex = disabledDayIndex % 7;
-
 
   return [nextUpdateTime, disabledDayIndex];
 };
 
 
-export const todayDate = () => {
-  const today = new Date();
-  const newHour = today.getHours() + GET_TIMEZONE_CONSTANT();
+export const todayDate = () => { // Fixed
+  const today = moment(new Date()).tz("America/Toronto");
 
-  if (newHour < 0) {
-    today.setDate(today.getDate() - 1);
-  } else {
-    today.setHours(newHour);
-  }
-
-  let dayIndex = (today.getDay() - 1) % 7;
-
-  if (dayIndex < 0) {
-    dayIndex = 6;
-  }
-
-  return [today, dayIndex];
+  return [today, today.day()];
 };
 
-export const tomorrowDate = () => {
-  const [tomorrow, tomorrowIndex] = todayDate();
+export const tomorrowDate = () => { // Fixed
+  const tomorrow = moment(new Date()).tz("America/Toronto").add(1, "days");
 
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  let dayIndex = (tomorrowIndex + 1) % 7;
-
-  return [tomorrow, dayIndex];
+  return [tomorrow, tomorrow.day()];
 };
 
-export const dayString = (date = new Date()) =>
-  `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}`;
-
-
-export const isBeforeUpdateTime = (date) => {
-  const todayUpdatetime = new Date();
-
-  todayUpdatetime.setUTCHours(
-    parseInt(process.env.UPDATE_TIME.slice(0, 2)) - GET_TIMEZONE_CONSTANT()
-  );
-
-  todayUpdatetime.setUTCMinutes(process.env.UPDATE_TIME.slice(2));
-
-
-  if (
-    todayUpdatetime.getTime() > date.getTime() &&
-    date.getUTCHours() > 4
-  ) {
-    return true;
-  } else {
-    return false;
+export const dayString = (date = moment(new Date())) => {
+  // If not a moment object, convert to moment object
+  if (!date.day) {
+    date = moment(date);
   }
+
+  return `${date.date()}/${date.month() + 1}/${date.year()}`;
+}
+
+
+export const isBeforeUpdateTime = (date) => { // Fixed
+  const todayUpdatetime = moment(date).tz("America/Toronto");
+
+  todayUpdatetime.set({ hour: process.env.UPDATE_TIME.slice(0, 2), minute: process.env.UPDATE_TIME.slice(2) });
+
+
+  return date < todayUpdatetime;
 
 }
 
 export const reconstructDate = (date) => {
-  var parts = date.split("/");
-  var dt = new Date(
-    parseInt(parts[2], 10),
-    parseInt(parts[1], 10) - 1,
-    parseInt(parts[0], 10)
-  );
-  return dt;
+  // Given a string in the format "d/m/yyyy", return a moment date object in toronto time zone
+  const dateArr = date.split("/");
+  const momentDate = moment().tz("America/Toronto");
+  momentDate.set({ date: dateArr[0], month: dateArr[1] - 1, year: dateArr[2] });
+
+  return momentDate;
 }
 
 export const isWithin5Days = (date) => {
@@ -125,37 +75,24 @@ export const isWithin5Days = (date) => {
   else return false;
 }
 
-export const isWithinAWeek = (date) => {
-  var today = new Date();
-  var in7days = new Date(
-    today.getFullYear(),
-    today.getMonth(),
-    today.getDate() + (isBeforeUpdateTime(today) ? 7 : 8),
-    //today.getDate() + 7
-  );
+export const isWithinAWeek = (date) => { // fixed
+  
+  const in7days = moment().tz("America/Toronto").add(7, "days");
+
   if (date <= in7days) return true;
   else return false;
 }
 
-export const hasDayUpdated = (date) => {
-  // modify hours and minutes to match the current time
-  const now = new Date();
-  const update = new Date(date);
-  update.setUTCHours(
-    now.getUTCHours(),
-    now.getUTCMinutes(),
-  );
 
+export const getAppDayIndex = (date) => { // Fixed
 
-  if (today.getTime() > update.getTime()) {
-    return true;
+  let dayIndex;
+  // check if date is a moment object
+  if (date.day) {
+    dayIndex = date.day() - 1;
   } else {
-    return false;
+    dayIndex = date.getDay() - 1;
   }
-}
-
-export const getAppDayIndex = (date) => {
-  let dayIndex = date.getDay() - 1;
 
   if (dayIndex < 0) {
     dayIndex = 6;
@@ -164,10 +101,13 @@ export const getAppDayIndex = (date) => {
   return dayIndex;
 }
 
-export const isTodayAndAfterUpdateTime = (date) => {
+export const isTodayAndAfterUpdateTime = (date) => { // Fixed
+
+  if (!date.day) date = moment(date);
+  
   const today = new Date();
 
-  if (date.getDay() != today.getDay()) {
+  if (date.day() != today.getDay()) {
     return false;
   }
 
@@ -178,38 +118,23 @@ export const isTodayAndAfterUpdateTime = (date) => {
   return true;
 }
 
-export const isToday = (date) => {
-  const today = new Date();
-
-  if (date.getUTCDate() != today.getUTCDate() || date.getUTCMonth() != today.getUTCMonth()) {
-    return false;
-  }
-
-  return true;
+export const isToday = (date) => { // Fixed
+  console.log("Date: ", date);
+  return moment().tz("America/Toronto").isSame(date, "day");
 }
 
-export const isNowPastUpdateTime = () => {
-  const now = new Date();
+export const isNowPastUpdateTime = () => !isBeforeUpdateTime(new Date()) // Fixed
 
-  if (isBeforeUpdateTime(now)) {
-    return false;
-  }
+export const isTomorrow = (date) => { // Fixed
+  // Check if the date is tomorrow
+  // make use of the isToday function
 
-  return true;
+  const tomorrow = moment().tz("America/Toronto").add(1, "days");
+
+  return tomorrow.isSame(date, "day");
 }
 
-export const isTomorrow = (date) => {
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-
-  if (date.getDay() != tomorrow.getDay()) {
-    return false;
-  }
-
-  return true;
-}
-
-export const isNDaysFromNow = (date, n) => {
+export const isNDaysFromNow = (date, n) => { // Fixed
   const today = new Date();
   const nDaysFromNow = new Date();
   nDaysFromNow.setDate(today.getDate() + n);

@@ -5,19 +5,17 @@ import mongoose from "mongoose";
 import { isTodayAndAfterUpdateTime, isBeforeUpdateTime, dayString, isWithinAWeek, getAppDayIndex } from "@/_helpers/time";
 import { parse } from "path";
 import { reconstructDate } from "@/_helpers/time";
+import moment from "moment-timezone";
 
 export async function POST(req, res) {
   const [body] = await Promise.all([req.json(), connectDB()]);
 
-
-  console.log("remove user from day", body);
-
   // For now, this will only support normal meals (non packed meals)
   const day = reconstructDate(body.date);
+  
   // set the time for the day to the current time
-  const today = new Date();
-  day.setUTCHours(today.getUTCHours());
-  day.setUTCMinutes(today.getUTCMinutes());
+  const today = moment().tz("America/Toronto");
+  day.set({ hour: today.hour(), minute: today.minute() });
 
   const dayObject = await Day.findOne({ date: dayString(day) });
   

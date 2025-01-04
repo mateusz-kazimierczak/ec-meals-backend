@@ -1,6 +1,7 @@
 import connectDB from "@/_helpers/db/connect";
 import User from "@/_helpers/db/models/User";
 import Day from "@/_helpers/db/models/Day";
+import moment from "moment-timezone"
 
 const HOUROFFSET =  -4;
 
@@ -19,13 +20,15 @@ import { checkUsersMeals } from "../../day/route"
 export async function GET(req, res) { 
     await connectDB();
 
-    // Decide which meals to send
+    
     const currentTime = new Date();
-    let currHour = currentTime.getUTCHours() + HOUROFFSET;
+    // Convert to Toronto time
+    const timeToronto = moment(currentTime).tz("America/Toronto");
 
-    if (currHour < 0) {
-        currHour += 24;
-    }
+    // Get the hour in Toronto time
+    let currHour = timeToronto.hour();
+
+
 
     // Before the update time, need to handle the request differently by collecting all the breakfast from db
     if (isBeforeUpdateTime(currentTime)) {
@@ -41,7 +44,14 @@ export async function GET(req, res) {
     // Get todays meals
     
     const [dateToday, todayIndex] = todayDate();
-    const meals = (await Day.findOne({ date: dayString(dateToday) }, "meals")).meals;
+    console.log("Today index: ", dayString(dateToday));
+    const todayObject = await Day.findOne({ date: dayString(dateToday) }, "meals");
+
+    if (!todayObject) {
+        return Response.json({ message: "No meals found for today" }, { status: 404 }); 
+    }
+
+    const meals = todayObject.meals;
 
     
     if (currHour < 9) {
@@ -77,4 +87,14 @@ const getAllUsersBreakfast = async (dayIndex) => {
     });
 
     return breakfast;
+}
+
+const addGuests = (meal, guests, meals) => {
+    guests.forEach(guest => {
+        if (guest.meal === meal) {
+            meals.push({name: guest.name, diet: guest.diet});
+        }
+    });
+
+    return meal;
 }
