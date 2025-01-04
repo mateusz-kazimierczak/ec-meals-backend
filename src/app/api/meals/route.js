@@ -52,8 +52,6 @@ export async function POST(req, res) {
 
   const data = await req.json();
 
-  console.log("post meals route", data);
-
   const user = await User.findByIdAndUpdate(forUser, { meals: data.meals });
 
   return Response.json({

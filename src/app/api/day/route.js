@@ -242,7 +242,8 @@ export async function PATCH(req, res) {
     } else {
       // packed meals
       users.forEach(async (user) => {
-        
+
+
         if (isWithinAWeek(reconstructDate(body.date)) && !(isTomorrow(reconstructDate(body.date)) && isNowPastUpdateTime())) {
           const userObject = await User.findById(user._id);
           userObject.meals[getAppDayIndex(reconstructDate(body.date))][mealsIndex] = true;
@@ -273,6 +274,7 @@ export async function PATCH(req, res) {
     day.unmarked = day.unmarked.filter(
       (element) => !body.users.includes(element._id.toString())
     );
+
     day.markModified("unmarked");
 
     await day.save();

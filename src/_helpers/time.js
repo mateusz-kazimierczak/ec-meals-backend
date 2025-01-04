@@ -126,14 +126,12 @@ export const isToday = (date) => { // Fixed
 export const isNowPastUpdateTime = () => !isBeforeUpdateTime(new Date()) // Fixed
 
 export const isTomorrow = (date) => { // Fixed
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
+  // Check if the date is tomorrow
+  // make use of the isToday function
 
-  if (date.getDay() != tomorrow.getDay()) {
-    return false;
-  }
+  const tomorrow = moment().tz("America/Toronto").add(1, "days");
 
-  return true;
+  return tomorrow.isSame(date, "day");
 }
 
 export const isNDaysFromNow = (date, n) => { // Fixed
