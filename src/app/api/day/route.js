@@ -37,12 +37,19 @@ export async function POST(req, res) {
     const mealArrs = buildMealArraysFromDay(day);
 
     if (isWithinAWeek(date)) { 
-      // Get meals from user matrices
-      const getPackedMeals = date.isSame(now, "day")
+      // first check if packed meals should be fetched from user matrix:
+      // only get packed meals from the user matrix if either:
+      // 1. the date is tomorrow and the current time is before the update time
+      // 2. the date after tomorrow
+      
+      const isTomorrowBeforeUpdate = isTomorrow(date) && !isNowPastUpdateTime();
+      const isAfterTomorrow = date > moment().add(1, "days");
 
+      const getPackedMeals = isTomorrowBeforeUpdate || isAfterTomorrow;
 
       addMealsFromUserMatrix(date, users, mealArrs, getPackedMeals);
     }
+
 
     checkUnmarkedUsers(users, mealArrs);
 
