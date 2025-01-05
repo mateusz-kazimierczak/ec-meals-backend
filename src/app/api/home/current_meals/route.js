@@ -3,7 +3,6 @@ import User from "@/_helpers/db/models/User";
 import Day from "@/_helpers/db/models/Day";
 import moment from "moment-timezone"
 
-const HOUROFFSET =  -4;
 
 export const revalidate = 0;
 
