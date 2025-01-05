@@ -8,7 +8,7 @@ export const getNextUpdateTime = () => { // Fixed
   let disabledDayIndex;
   const nextUpdateTime = moment(new Date()).tz("America/Toronto");
 
-  nextUpdateTime.set({ hour: process.env.UPDATE_TIME.slice(0, 2), minute: process.env.UPDATE_TIME.slice(2) });
+  nextUpdateTime.set({ hour: process.env.UPDATE_TIME.slice(0, 2), minute: process.env.UPDATE_TIME.slice(2), second: 0 });
 
   const now = new Date();
 
@@ -132,6 +132,16 @@ export const isTomorrow = (date) => { // Fixed
   const tomorrow = moment().tz("America/Toronto").add(1, "days");
 
   return tomorrow.isSame(date, "day");
+}
+
+export const isAfterNDays = (date, n) => {
+  const nDaysFromNow = moment().tz("America/Toronto").add(n, "days");
+  return moment(date).isAfter(nDaysFromNow, "day");
+}
+
+export const isDayPast = (date) => {
+  // Check if the date is in the past
+  return moment(date).tz("America/Toronto").isBefore(moment().tz("America/Toronto"), "day");
 }
 
 export const isNDaysFromNow = (date, n) => { // Fixed

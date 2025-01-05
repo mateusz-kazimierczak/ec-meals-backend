@@ -54,6 +54,7 @@ export async function POST(req, res) {
 
   if (isAdmin) {
     oldPref.preferences.persistMeals = pref.persistMeals;
+    oldPref.preferences.skipNotSignedUp = pref.skipNotSignedUp;
   }
   
   oldPref.markModified("preferences");

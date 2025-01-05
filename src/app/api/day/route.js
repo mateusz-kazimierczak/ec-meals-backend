@@ -2,7 +2,7 @@ import connectDB from "@/_helpers/db/connect";
 import User from "@/_helpers/db/models/User";
 import Day from "@/_helpers/db/models/Day";
 import mongoose from "mongoose";
-import { reconstructDate, isWithinAWeek, getAppDayIndex, isToday, isNowPastUpdateTime, isTomorrow } from "@/_helpers/time";
+import { reconstructDate, isWithinAWeek, getAppDayIndex, isToday, isNowPastUpdateTime, isTomorrow, isNDaysFromNow, isAfterNDays, isDayPast } from "@/_helpers/time";
 import { parse } from "path";
 import moment from "moment-timezone";
 
@@ -15,12 +15,11 @@ export async function POST(req, res) {
     }), 
     User.find(
       { active: true },
-      "firstName lastName meals preferences diet"
+      "active firstName lastName meals preferences diet skipNotSignedUp"
     )])
 
 
   // Get the actual data from the string
-  console.log("sent date: ", body.date)
   const date = moment(reconstructDate(body.date))
   const now = new Date();
   
@@ -29,7 +28,6 @@ export async function POST(req, res) {
 
   let allMeals;
 
-
   if (date > new Date()) {
 
     console.log("Date is in the future");
@@ -37,15 +35,13 @@ export async function POST(req, res) {
     const mealArrs = buildMealArraysFromDay(day);
 
     if (isWithinAWeek(date)) { 
-      // first check if packed meals should be fetched from user matrix:
-      // only get packed meals from the user matrix if either:
-      // 1. the date is tomorrow and the current time is before the update time
-      // 2. the date after tomorrow
-      
-      const isTomorrowBeforeUpdate = isTomorrow(date) && !isNowPastUpdateTime();
-      const isAfterTomorrow = date > moment().add(1, "days");
+      // Get meals from user matrices
 
-      const getPackedMeals = isTomorrowBeforeUpdate || isAfterTomorrow;
+      // Only get the packed meals from matrix if either
+      // - It is after update time and the date is after tomorrow
+      // - It is before update time and the date is after today
+      const getPackedMeals = isNowPastUpdateTime() ? isAfterNDays(date, 1) : isAfterNDays(date, 0);
+
 
       addMealsFromUserMatrix(date, users, mealArrs, getPackedMeals);
     }
@@ -90,9 +86,15 @@ export async function POST(req, res) {
 
     addGuests(day, allMeals);
 
+    const usersToReportNotSignedUp = users.filter((user) => (
+      user.active &&
+      !user.preferences.skipNotSignedUp
+    ))
+
+
     return Response.json({
       meals: allMeals,
-      allUsers: users,
+      allUsers: usersToReportNotSignedUp,
       status: "final",
     });
   }
@@ -251,12 +253,35 @@ export async function PATCH(req, res) {
       users.forEach(async (user) => {
 
 
-        if (isWithinAWeek(reconstructDate(body.date)) && !(isTomorrow(reconstructDate(body.date)) && isNowPastUpdateTime())) {
+        // Add to user matrix instead of database if:
+        // - The date is within a week
+        // And either:
+        // - It is before the update time and the date is tomorrow
+        // - It is after the update time and the date is after tomorrow
+
+        const isDateWithinAWeek = isWithinAWeek(reconstructDate(body.date))
+        let addToMaterix = false;
+
+        if (isDayPast(reconstructDate(body.date))) {
+          // if it is in past never add to matrix
+          addToMaterix = false;
+        }
+        else if (isNowPastUpdateTime()) {
+          addToMaterix = isDateWithinAWeek && isAfterNDays(reconstructDate(body.date), 1);
+        } else {
+          addToMaterix = isDateWithinAWeek && isAfterNDays(reconstructDate(body.date), 0);
+        }
+
+        console.log("Add to matrix: ", addToMaterix);
+
+        if (addToMaterix) {
+          // Add meal to users matrix
           const userObject = await User.findById(user._id);
           userObject.meals[getAppDayIndex(reconstructDate(body.date))][mealsIndex] = true;
           userObject.markModified("meals");
           userObject.save();
         } else {
+          // Add Packed meal to database object
           day.packedMeals[mealsIndex - 3].push({
             _id: user._id,
             diet: user.diet,

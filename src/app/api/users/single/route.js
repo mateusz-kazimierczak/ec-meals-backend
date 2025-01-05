@@ -10,6 +10,12 @@ import { Types } from "mongoose";
 
 const buildUser = async (ujson) => {
   console.log(ujson);
+  // get day adn month as int from the birthday string (format: "dd/mm")
+  if (ujson.birthday) {
+    const [day, month] = ujson.birthday.split("/").map((x) => parseInt(x));
+    ujson.birthday = { day, month };
+  } 
+
   const user = {
     username: ujson.username,
     firstName: ujson.firstName,
@@ -19,6 +25,8 @@ const buildUser = async (ujson) => {
     role: ujson.role,
     active: ujson.active,
     guest: ujson.guest,
+    birthdayDay: ujson.birthday?.day || null,
+    birthdayMonth: ujson.birthday?.month || null,
     diet: ujson.diet || null,
   };
 
