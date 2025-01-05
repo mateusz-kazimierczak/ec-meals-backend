@@ -15,7 +15,7 @@ export async function POST(req, res) {
     }), 
     User.find(
       { active: true },
-      "firstName lastName meals preferences diet"
+      "active firstName lastName meals preferences diet skipNotSignedUp"
     )])
 
 
@@ -83,9 +83,17 @@ export async function POST(req, res) {
 
     addGuests(day, allMeals);
 
+    const usersToReportNotSignedUp = users.filter((user) => (
+      user.active &&
+      !user.preferences.skipNotSignedUp
+    ))
+
+    console.log("selected users: ", usersToReportNotSignedUp);
+    console.log("all users: ", users);
+
     return Response.json({
       meals: allMeals,
-      allUsers: users,
+      allUsers: usersToReportNotSignedUp,
       status: "final",
     });
   }

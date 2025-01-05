@@ -19,6 +19,7 @@ const buildUser = async (ujson) => {
     role: ujson.role,
     active: ujson.active,
     guest: ujson.guest,
+    birthday: ujson.birthday || null,
     diet: ujson.diet || null,
   };
 

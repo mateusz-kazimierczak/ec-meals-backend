@@ -7,7 +7,7 @@ const schema = new Schema(
     hash: { type: String, required: true },
     firstName: { type: String, required: true },
     lastName: { type: String, required: false },
-    birthday: { type: Date, required: false },
+    birthday: { type: String, required: false },
     role: {
       type: String,
       default: "student",
