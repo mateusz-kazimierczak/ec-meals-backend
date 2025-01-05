@@ -134,6 +134,16 @@ export const isTomorrow = (date) => { // Fixed
   return tomorrow.isSame(date, "day");
 }
 
+export const isAfterNDays = (date, n) => {
+  const nDaysFromNow = moment().tz("America/Toronto").add(n, "days");
+  return moment(date).isAfter(nDaysFromNow, "day");
+}
+
+export const isDayPast = (date) => {
+  // Check if the date is in the past
+  return moment(date).tz("America/Toronto").isBefore(moment().tz("America/Toronto"), "day");
+}
+
 export const isNDaysFromNow = (date, n) => { // Fixed
   const today = new Date();
   const nDaysFromNow = new Date();
