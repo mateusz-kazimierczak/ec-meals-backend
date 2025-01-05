@@ -172,7 +172,7 @@ export async function GET() {
     })
   );
 
-  addMealsToDays(today, tomorrow, meals, packedMeals, unmarked);
+  addMealsToDays(today, tomorrow, meals, packedMeals, unmarked, noMeals);
 
   await Promise.all([today.save(), tomorrow.save(),
     saveIfExists(nextWeekToday), saveIfExists(nextWeekTomorrow),
@@ -189,9 +189,8 @@ export async function GET() {
   });
 }
 
-const addMealsToDays = (today, tomorrow, meals, packedMeals, unmarked) => {
+const addMealsToDays = (today, tomorrow, meals, packedMeals, unmarked, noMeals) => {
 
-  let modifiedToday, modifiedTomorrow = false;
 
   if (!today.meals) today.meals = [[], [], []];
 
@@ -201,8 +200,12 @@ const addMealsToDays = (today, tomorrow, meals, packedMeals, unmarked) => {
 
   today.unmarked = unmarked;
 
+  today.noMeals = noMeals;
+
   today.markModified("meals");
   tomorrow.markModified("packedMeals");
+  today.markModified("unmarked");
+  today.markModified("noMeals");
 }
 
 const mealListMerge = (meals, newMeals) => {
