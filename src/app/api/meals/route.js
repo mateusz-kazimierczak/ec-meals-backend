@@ -28,6 +28,8 @@ export async function GET(req, res) {
 
   const [updateTime, disabledDay] = getNextUpdateTime();
 
+  console.log("updateTime: ", updateTime.format("YYYY-MM-DD HH:mm:ss"));
+
 
   return Response.json({
     meals: data.meals,

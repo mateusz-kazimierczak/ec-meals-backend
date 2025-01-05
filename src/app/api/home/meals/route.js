@@ -29,8 +29,6 @@ const getUserMeals = async (forUser) => {
   const time_toronto = moment(current_time).tz("America/Toronto");
   const tomorrow_time_toronto = time_toronto.clone().add(1, "day");
 
-  debugger;
-
   // Set the hour in Toronto time
   let update_time = time_toronto.clone().set({ hour: process.env.UPDATE_TIME.slice(0, 2), minute: process.env.UPDATE_TIME.slice(2) });
 
@@ -38,10 +36,6 @@ const getUserMeals = async (forUser) => {
   if (current_time > update_time) {
     // After update time today
     // fetch meals from database
-
-    debugger;
-
-    console.log("after update time", current_time, update_time);
 
 
     const [today, thisUser, tomorrow] = await Promise.all([
@@ -78,9 +72,6 @@ const getUserMeals = async (forUser) => {
   } else {
     // fetch meals from user object
 
-    debugger;
-
-    console.log("before update time", current_time, update_time);
     
 
     const [thisUser, today] = await Promise.all([

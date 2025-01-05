@@ -8,7 +8,7 @@ export const getNextUpdateTime = () => { // Fixed
   let disabledDayIndex;
   const nextUpdateTime = moment(new Date()).tz("America/Toronto");
 
-  nextUpdateTime.set({ hour: process.env.UPDATE_TIME.slice(0, 2), minute: process.env.UPDATE_TIME.slice(2) });
+  nextUpdateTime.set({ hour: process.env.UPDATE_TIME.slice(0, 2), minute: process.env.UPDATE_TIME.slice(2), second: 0 });
 
   const now = new Date();
 
