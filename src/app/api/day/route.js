@@ -42,10 +42,10 @@ export async function POST(req, res) {
       // - It is before update time and the date is after today
       const getPackedMeals = isNowPastUpdateTime() ? isAfterNDays(date, 1) : isAfterNDays(date, 0);
 
-      console.log("Get packed meals: ", getPackedMeals);
 
       addMealsFromUserMatrix(date, users, mealArrs, getPackedMeals);
     }
+
 
     checkUnmarkedUsers(users, mealArrs);
 
