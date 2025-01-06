@@ -6,14 +6,16 @@ import moment from "moment-timezone";
 
 export const getNextUpdateTime = () => { // Fixed
   let disabledDayIndex;
-  const nextUpdateTime = moment(new Date()).tz("America/Toronto");
+  const nextUpdateTime = moment().tz("America/Toronto");
+
 
   nextUpdateTime.set({ hour: process.env.UPDATE_TIME.slice(0, 2), minute: process.env.UPDATE_TIME.slice(2), second: 0 });
 
   const now = new Date();
 
   if (isBeforeUpdateTime(now)) {
-    disabledDayIndex = getAppDayIndex(nextUpdateTime.add(-1, "days"));
+    const prevDay = nextUpdateTime.clone().add(-1, "days");
+    disabledDayIndex = getAppDayIndex(prevDay);
   } else {
     disabledDayIndex = getAppDayIndex(nextUpdateTime);
     nextUpdateTime.add(1, "days");
