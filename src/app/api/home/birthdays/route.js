@@ -12,6 +12,9 @@ import {
   } from "@/_helpers/time";
 import { act } from "react";
 
+// revalidate every hour
+export const revalidate = 60 * 60;
+
 export async function GET(req, res) { 
     await connectDB();
 
