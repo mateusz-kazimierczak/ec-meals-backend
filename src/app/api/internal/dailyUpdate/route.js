@@ -75,8 +75,8 @@ export async function GET() {
 
   await Promise.all(
     users.map(async (user) => {
-      if (user.meals[dayIndex][6]) {
-        return noMeals.push(constructMealUserObject(user));
+      if (user.meals[nextDayIndex][6]) {
+        noMeals.push(constructMealUserObject(user));
       }
 
       // Check every user
@@ -119,10 +119,14 @@ export async function GET() {
       const mealsTomorrow = user.meals[nextDayIndex];
 
       let markedToday = false;
-      for (let i = 0; i < 7; i++) {
-        if (mealsToday[i]) {
-          markedToday = true;
-          break;
+      if (is_user_in_list(user._id, today.noMeals)) {
+        markedToday = true;
+      } else {
+        for (let i = 0; i < 4; i++) {
+          if (mealsToday[i]) {
+            markedToday = true;
+            break;
+          }
         }
       }
 
@@ -161,7 +165,7 @@ export async function GET() {
 
         user.meals[nextDayIndex] = user.meals[nextDayIndex]
           .slice(0, 3)
-          .concat([false, false, false]);
+          .concat([false, false, false, false]);
 
         user.markModified("meals");
       } else {
@@ -171,6 +175,7 @@ export async function GET() {
       
     })
   );
+
 
   addMealsToDays(today, tomorrow, meals, packedMeals, unmarked, noMeals);
 
@@ -189,6 +194,10 @@ export async function GET() {
   });
 }
 
+const is_user_in_list = (id, list) => {
+  return list.some((meal) => meal._id.toString() == id.toString());
+}
+
 const addMealsToDays = (today, tomorrow, meals, packedMeals, unmarked, noMeals) => {
 
 
@@ -200,7 +209,7 @@ const addMealsToDays = (today, tomorrow, meals, packedMeals, unmarked, noMeals) 
 
   today.unmarked = unmarked;
 
-  today.noMeals = noMeals;
+  tomorrow.noMeals = noMeals;
 
   today.markModified("meals");
   tomorrow.markModified("packedMeals");
