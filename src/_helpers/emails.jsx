@@ -2,6 +2,8 @@ import WelcomeEmail from "../../emails/WelcomeEmail";
 import DailyEmail from "../../emails/DailyEmail";
 import { Resend } from "resend";
 
+import {EMAIL_SENDER} from './CONST'
+
 const resendApiKey = process.env.RESEND_API_KEY
 
 const resend = new Resend(resendApiKey);
@@ -10,7 +12,7 @@ const resend = new Resend(resendApiKey);
 export const sendWelcomeEmail = async (user, pass) => {
     console.log("Sending welcome email to", user.email);
     await resend.emails.send({
-      from: 'Meals <meals@mateusz.us>',
+      from: EMAIL_SENDER,
       to: [user.email],
       subject: `Welcome to EC, ${user.firstName}!`,
       react: <WelcomeEmail name={user.firstName} username={user.username} pass={pass} />,
@@ -31,7 +33,7 @@ export const sendMealEmails = async (users) => {
     try {
       resend.batch.send(
         users.map((user) => ({
-          from: 'Meals <meals@mateusz.us>',
+          from: EMAIL_SENDER,
           to: [user.email],
           subject: user.warning ? "!! No meals for tomorrow !!" : "Meal update",
           react: <DailyEmail name={user.name} noMealsWarning={user.warning} todayMeals={user.todayMeals} tomorrowMeals={user.tomorrowMeals} />,
