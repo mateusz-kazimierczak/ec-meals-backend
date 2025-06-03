@@ -35,7 +35,7 @@ export async function GET(req, res) {
     })
 
     // one more filter to make sure birthday is not negative
-    birthdayDisplay = birthdayDisplay.filter((user) => user.days >= 0);
+    birthdayDisplay = birthdayDisplay.filter((user) => user.days >= 0).sort((a, b) => a.days - b.days);
 
     return Response.json({ birthdayDisplay });
 
