@@ -5,6 +5,8 @@ import { cookies } from "next/headers";
 import { getNextUpdateTime } from "@/_helpers/time";
 import moment from "moment-timezone";
 
+import { BigQuery } from "@google-cloud/bigquery";
+
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
 
@@ -39,8 +41,20 @@ export async function GET(req, res) {
   });
 }
 
+  const bqClient = new BigQuery(
+    {
+      projectID: "ec-meals-462913",
+      credentials: JSON.parse(process.env.GCP_AUTH || "{}"),
+
+    }
+  )
+
 export async function POST(req, res) {
   await connectDB();
+
+
+  const datasetId = "meal_history";
+  const tableId = "MAIN";
 
   let forUser = req.headers.get("forUser");
   const ROLE = req.headers.get("userRole");
@@ -55,6 +69,21 @@ export async function POST(req, res) {
   const data = await req.json();
 
   const user = await User.findByIdAndUpdate(forUser, { meals: data.meals });
+
+  try {
+  await bqClient.dataset(datasetId).table(tableId).insert([
+    {
+      USER_ID: req.headers.get("userID"),
+      CHANGE_TIME: new Date(),
+      OLD_MEALS: JSON.stringify(user.meals),
+      NEW_MEALS: JSON.stringify(data.meals),
+    },
+  ]);
+} catch (error) {
+  console.error("BigQuery insert error:", JSON.stringify(error, null, 2));
+}
+
+
 
   return Response.json({
     currTime: new Date(),
