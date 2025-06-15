@@ -53,8 +53,7 @@ export async function POST(req, res) {
   await connectDB();
 
 
-  const datasetId = "meal_history";
-  const tableId = "MAIN";
+  
 
   let forUser = req.headers.get("forUser");
   const ROLE = req.headers.get("userRole");
@@ -70,7 +69,11 @@ export async function POST(req, res) {
 
   const user = await User.findByIdAndUpdate(forUser, { meals: data.meals });
 
-  try {
+if (JSON.stringify(user.meals) !== JSON.stringify(data.meals)) {
+  console.log("diff meals")
+    try {
+    const datasetId = "meal_history";
+    const tableId = "HISTORY";
   await bqClient.dataset(datasetId).table(tableId).insert([
     {
       USER_ID: req.headers.get("userID"),
@@ -81,6 +84,7 @@ export async function POST(req, res) {
   ]);
 } catch (error) {
   console.error("BigQuery insert error:", JSON.stringify(error, null, 2));
+}
 }
 
 
