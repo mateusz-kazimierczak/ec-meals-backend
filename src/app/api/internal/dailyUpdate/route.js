@@ -185,8 +185,6 @@ export async function GET() {
           .concat([false, false, false, false]);
 
         user.markModified("meals");
-      } else {
-        console.log("Persisting meals");
       }
 
       const new_meals = user.meals.map((day) => day.slice());
@@ -210,8 +208,7 @@ export async function GET() {
   const tableId = "HISTORY";
 
   try {
-    console.log(meal_changes)
-    await bqClient.dataset(datasetId).table(tableId).insert(meal_changes);
+    bqClient.dataset(datasetId).table(tableId).insert(meal_changes);
   } catch (error) {
     console.error("BigQuery insert error:", JSON.stringify(error, null, 2));
   }

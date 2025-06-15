@@ -15,8 +15,6 @@ export async function GET(req, res) {
   const user_id = req.headers.get("userId");
   const weeksInPast = req.headers.get("week") - 1
 
-  console.log("Fetching logs for user:", user_id, "for weeks in past:", weeksInPast);
-
   // Get dates between for each weeksInPast option (1 to 4)
   const startDate = new Date();
   startDate.setDate(startDate.getDate() - (weeksInPast * 7) - 7);
@@ -39,8 +37,6 @@ export async function GET(req, res) {
     },
     location: 'US',
   };
-
-  console.log("Start date:", startDate.toISOString().split('T')[0], "End date:", endDate.toISOString().split('T')[0]);
 
   try {
     const [rows] = await bqClient.query(options);
