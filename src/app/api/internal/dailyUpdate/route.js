@@ -5,10 +5,19 @@ import { NextRequest } from "next/server";
 import { sendMealEmails } from "@/_helpers/emails";
 import { dayString } from "@/_helpers/time";
 import next from "next";
+import { BigQuery } from "@google-cloud/bigquery";
 
 import moment from "moment-timezone";
 
 import { getAppDayIndex } from "@/_helpers/time";
+
+  const bqClient = new BigQuery(
+    {
+      projectID: "ec-meals-462913",
+      credentials: JSON.parse(process.env.GCP_AUTH || "{}"),
+
+    }
+  )
 
 export async function GET() {
 
@@ -26,6 +35,7 @@ export async function GET() {
   const TomorrowString = dayString(tomorrowDate);
 
   // Date strings next week
+  const now = new Date();
   const NextWeekTodayDate = moment().tz("America/Toronto").add(7, "days");
   const NextWeekTodayString = dayString(NextWeekTodayDate);
   const NextWeekTomorrowDate = moment().tz("America/Toronto").add(8, "days");
@@ -73,8 +83,15 @@ export async function GET() {
 
   const emails = [];
 
+  const meal_changes = []
+
   await Promise.all(
     users.map(async (user) => {
+
+      // copy the meals array
+      const old_meals = user.meals.map((day) => day.slice());
+
+
       if (user.meals[nextDayIndex][6]) {
         noMeals.push(constructMealUserObject(user));
       }
@@ -171,10 +188,34 @@ export async function GET() {
       } else {
         console.log("Persisting meals");
       }
-      
+
+      const new_meals = user.meals.map((day) => day.slice());
+
+      const old_json = JSON.stringify(old_meals);
+      const new_json = JSON.stringify(new_meals);
+
+      if (old_json !== new_json) {
+        meal_changes.push({
+      USER_ID: user._id.toString(),
+      CHANGE_TIME: now,
+      IS_SYSTEM_CHANGE: true,
+      OLD_MEALS: old_json,
+      NEW_MEALS: new_json,
+    })}
       
     })
   );
+
+  const datasetId = "meal_history";
+  const tableId = "HISTORY";
+
+  try {
+    console.log(meal_changes)
+    await bqClient.dataset(datasetId).table(tableId).insert(meal_changes);
+  } catch (error) {
+    console.error("BigQuery insert error:", JSON.stringify(error, null, 2));
+  }
+  
 
 
   addMealsToDays(today, tomorrow, meals, packedMeals, unmarked, noMeals);
