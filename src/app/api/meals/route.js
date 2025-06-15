@@ -77,6 +77,7 @@ if (JSON.stringify(user.meals) !== JSON.stringify(data.meals)) {
   await bqClient.dataset(datasetId).table(tableId).insert([
     {
       USER_ID: req.headers.get("userID"),
+      IS_SYSTEM_CHANGE: false,
       CHANGE_TIME: new Date(),
       OLD_MEALS: JSON.stringify(user.meals),
       NEW_MEALS: JSON.stringify(data.meals),
