@@ -12,6 +12,16 @@ const bqClient = new BigQuery(
   )
 
 export async function GET(req, res) {
+
+  const ROLE = req.headers.get("userRole");
+  let forUser = req.headers.get("forUser");
+
+  if (forUser === "undefined" || !forUser) {
+    forUser = req.headers.get("userID");
+  } else if (ROLE !== "admin") {
+    return Response.json({ message: "Unauthorized" }, { status: 403 });
+  }
+
   const user_id = req.headers.get("userId");
   const weeksInPast = req.headers.get("week") - 1
 

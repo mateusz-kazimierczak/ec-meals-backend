@@ -58,6 +58,7 @@ const authOnly = [
   "/api/preferences",
   "/api/home",
   "/api/home/meals",
+  "/api/logs",
 ];
 
 // forces the route handler to be dynamic
