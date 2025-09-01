@@ -1,5 +1,7 @@
 import { min } from "moment-timezone";
 
+import { defaultNotificationPreferences } from '../../../app/api/preferences/notifications/defaults'
+
 const mongoose = require("mongoose");
 const Schema = mongoose.Schema;
 
@@ -22,6 +24,10 @@ const schema = new Schema(
     meals: { type: Object, required: true },
     preferences: { type: Object, default: {} },
     diet: { type: String, required: false },
+    notifications: {
+      type: Object,
+      default: undefined
+    }
   },
   {
     // add createdAt and updatedAt timestamps

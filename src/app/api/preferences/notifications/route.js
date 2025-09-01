@@ -19,9 +19,9 @@ export async function GET(req, res) {
     ID =req.headers.get("userID");
   }
 
-  const data = await User.findById(ID, "preferences firstName");
+  const data = await User.findById(ID, "notifications firstName");
 
-  
+  console.log("Notifications data for user:", data.firstName, data.notifications);
 
   return Response.json(data);
 }
@@ -47,19 +47,21 @@ export async function POST(req, res) {
 
   const pref = await req.json();
 
-  const oldPref = await User.findById(ID, "preferences");
+  const oldPref = await User.findById(ID, "notifications");
 
-  
-  oldPref.preferences.email = pref.email;
-  oldPref.preferences.allowNextWeek = pref.allowNextWeek;
-
-  if (isAdmin) {
-    oldPref.preferences.persistMeals = pref.persistMeals;
-    oldPref.preferences.skipNotSignedUp = pref.skipNotSignedUp;
+  // If the notifications object does not exist, create it
+  if (!oldPref.notifications) {
+    oldPref.notifications = {};
   }
-  
-  oldPref.markModified("preferences");
 
+  
+  console.log("old:" , oldPref.notifications);
+  oldPref.notifications.notificationTypes = pref.notificationTypes;
+  oldPref.notifications.schedule = pref.schedule;
+  oldPref.notifications.schema = pref.schema;
+  console.log("new:", oldPref.notifications);
+
+  oldPref.markModified("notifications");
 
   await oldPref.save();
 

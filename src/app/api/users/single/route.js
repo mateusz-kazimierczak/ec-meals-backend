@@ -7,6 +7,7 @@ import initUser from "@/_helpers/db/initUser";
 
 import { sendWelcomeEmail } from "@/_helpers/emails";
 import { Types } from "mongoose";
+import { defaultNotificationPreferences } from '../../preferences/notifications/defaults'
 
 const buildUser = async (ujson) => {
   console.log(ujson);
@@ -28,6 +29,7 @@ const buildUser = async (ujson) => {
     birthdayDay: ujson.birthday?.day || null,
     birthdayMonth: ujson.birthday?.month || null,
     diet: ujson.diet || null,
+    notifications: defaultNotificationPreferences,
   };
 
   if (ujson.password) {

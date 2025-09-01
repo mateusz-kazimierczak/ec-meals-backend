@@ -22,7 +22,6 @@ export async function GET(req, res) {
     return Response.json({ message: "Unauthorized" }, { status: 403 });
   }
 
-  const user_id = req.headers.get("userId");
   const weeksInPast = req.headers.get("week") - 1
 
   // Get dates between for each weeksInPast option (1 to 4)
@@ -41,7 +40,7 @@ export async function GET(req, res) {
   const options = {
     query: query,
     params: {
-      user_id: user_id,
+      user_id: forUser,
       start_date: startDate.toISOString().split('T')[0],
       end_date: endDate.toISOString().split('T')[0]
     },
@@ -52,7 +51,7 @@ export async function GET(req, res) {
     const [rows] = await bqClient.query(options);
     return Response.json({ logs: rows });
   } catch (error) {
-    console.error("BigQuery query error:", JSON.stringify(error, null, 2));
+    console.log(error)
     return Response.json({ error: "Failed to fetch logs" }, { status: 500 });
   }
 
