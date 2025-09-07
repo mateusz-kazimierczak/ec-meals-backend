@@ -5,7 +5,6 @@ export async function GET(req, res) {
   await connectDB();
   const forUser_ID = req.headers.get("user_id");
 
-
   let ID;
   if (forUser_ID != "undefined") {
 
@@ -20,8 +19,6 @@ export async function GET(req, res) {
   }
 
   const data = await User.findById(ID, "notifications firstName");
-
-  console.log("Notifications data for user:", data.firstName, data.notifications);
 
   return Response.json(data);
 }
@@ -55,11 +52,10 @@ export async function POST(req, res) {
   }
 
   
-  console.log("old:" , oldPref.notifications);
   oldPref.notifications.notificationTypes = pref.notificationTypes;
   oldPref.notifications.schedule = pref.schedule;
   oldPref.notifications.schema = pref.schema;
-  console.log("new:", oldPref.notifications);
+  oldPref.notifications.report = pref.report;
 
   oldPref.markModified("notifications");
 

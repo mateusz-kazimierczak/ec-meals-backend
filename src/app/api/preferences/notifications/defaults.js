@@ -1,5 +1,7 @@
 // 
 
+import { report } from "process";
+
 export const defaultNotificationPreferences = {
   notificationTypes: {
     email: true
@@ -14,5 +16,9 @@ export const defaultNotificationPreferences = {
     morning: Array(7).fill(true),
     noon: Array(7).fill(false),
     evening: Array(7).fill(false),
+  },
+  report: {
+    full_report: Array(7).fill(false),
+    report_on_notifications: Array(7).fill(true)
   }
 };
