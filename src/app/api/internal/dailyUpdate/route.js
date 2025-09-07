@@ -10,6 +10,7 @@ import { BigQuery } from "@google-cloud/bigquery";
 import moment from "moment-timezone";
 
 import { getAppDayIndex } from "@/_helpers/time";
+import { use } from "react";
 
   const bqClient = new BigQuery(
     {
@@ -76,6 +77,14 @@ export async function GET() {
     });
   }
 
+    // user ids of today's packed meals
+  let todayPackedMealUserIds = new Set();
+  today.packedMeals.forEach((meal) => {
+    meal.forEach((userMeal) => {
+      todayPackedMealUserIds.add(userMeal._id.toString());
+    });
+  });
+
   const meals = MealCategories.slice(0, 3).map((category) => []);
   const packedMeals = MealCategories.slice(3, 6).map((category) => []);
   const noMeals = [];
@@ -92,7 +101,7 @@ export async function GET() {
       const old_meals = user.meals.map((day) => day.slice());
 
 
-      if (user.meals[nextDayIndex][6]) {
+      if (user.meals[dayIndex][6]) {
         noMeals.push(constructMealUserObject(user));
       }
 
@@ -116,7 +125,6 @@ export async function GET() {
 
       if (nextWeekToday) {
         // check the day object to see if the user has already been marked for a meal
-        console.log(nextWeekToday.meals);
         nextWeekToday.meals.forEach((meal, index) => {
           meal.forEach((userMeal) => {
             if (userMeal._id.toString() === user._id.toString()) {
@@ -136,14 +144,20 @@ export async function GET() {
       const mealsTomorrow = user.meals[nextDayIndex];
 
       let markedToday = false;
-      if (is_user_in_list(user._id, today.noMeals)) {
+      if (is_user_in_list(user._id, noMeals)) {
         markedToday = true;
       } else {
-        for (let i = 0; i < 4; i++) {
+        // First need to check if the users are not signed up for any normal meals today
+        for (let i = 0; i < 3; i++) {
           if (mealsToday[i]) {
             markedToday = true;
             break;
           }
+        }
+
+        // Also have to check if they have not signed up for any packed meals today
+        if (todayPackedMealUserIds.has(user._id.toString())) {
+          markedToday = true;
         }
       }
 
@@ -177,12 +191,12 @@ export async function GET() {
       if (!user.preferences.persistMeals) {
         // remove current meals
         user.meals[dayIndex] = [false, false, false].concat(
-          user.meals[dayIndex].slice(3)
-        );
+          user.meals[dayIndex].slice(3, 6)
+        ).concat([false]);
 
         user.meals[nextDayIndex] = user.meals[nextDayIndex]
           .slice(0, 3)
-          .concat([false, false, false, false]);
+          .concat([false, false, false]).concat(user.meals[nextDayIndex][6]);
 
         user.markModified("meals");
       }
@@ -208,7 +222,8 @@ export async function GET() {
   const tableId = "HISTORY";
 
   try {
-    bqClient.dataset(datasetId).table(tableId).insert(meal_changes);
+    if (meal_changes.length > 0)
+      bqClient.dataset(datasetId).table(tableId).insert(meal_changes);
   } catch (error) {
     console.error("BigQuery insert error:", JSON.stringify(error, null, 2));
   }
@@ -216,6 +231,7 @@ export async function GET() {
 
 
   addMealsToDays(today, tomorrow, meals, packedMeals, unmarked, noMeals);
+
 
   await Promise.all([today.save(), tomorrow.save(),
     saveIfExists(nextWeekToday), saveIfExists(nextWeekTomorrow),
@@ -247,7 +263,7 @@ const addMealsToDays = (today, tomorrow, meals, packedMeals, unmarked, noMeals) 
 
   today.unmarked = unmarked;
 
-  tomorrow.noMeals = noMeals;
+  today.noMeals = noMeals;
 
   today.markModified("meals");
   tomorrow.markModified("packedMeals");
@@ -277,7 +293,6 @@ const saveIfExists = async (data) => {
   if (data) {
     await data.save();
     console.log("Saved next week");
-    console.log(data);
   }
   
 };
