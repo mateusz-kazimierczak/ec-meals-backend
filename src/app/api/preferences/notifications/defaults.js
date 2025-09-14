@@ -4,7 +4,7 @@ import { report } from "process";
 
 export const defaultNotificationPreferences = {
   notificationTypes: {
-    email: true
+    email: false
   },
   schema: {
     full_report: Array(7).fill(false),

@@ -11,15 +11,11 @@ export async function GET(req, res) {
     
   await Promise.all(users.map(async (user) => {
     console.log("Checking user:", user.firstName, user.notifications);
-    if (!user.notifications) {
-
-      console.log("Adding default notifications preferences to user:", user.firstName);
-      user.notifications = defaultNotificationPreferences;
+    user.notifications = defaultNotificationPreferences;
 
       user.markModified("notifications");
     
       await user.save();
-    }
   }));
 
 
