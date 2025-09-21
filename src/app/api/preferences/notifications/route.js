@@ -56,6 +56,7 @@ export async function POST(req, res) {
   oldPref.notifications.schedule = pref.schedule;
   oldPref.notifications.schema = pref.schema;
   oldPref.notifications.report = pref.report;
+  oldPref.notifications.device = pref.device;
 
   oldPref.markModified("notifications");
 

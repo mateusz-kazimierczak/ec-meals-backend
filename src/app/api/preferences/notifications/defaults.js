@@ -20,5 +20,6 @@ export const defaultNotificationPreferences = {
   report: {
     full_report: Array(7).fill(false),
     report_on_notifications: Array(7).fill(true)
-  }
+  },
+  device: null
 };
