@@ -66,7 +66,7 @@ export async function POST(req, res) {
   // check if the user is registered for notifications
   let device_registered = false;
   if (user.notifications && user.notifications.device) {
-    if (user.notifications.device.token.length > 0) {
+    if (user.notifications.device.token.length() > 0) {
       device_registered = true;
     }
   }
