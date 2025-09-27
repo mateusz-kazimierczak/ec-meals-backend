@@ -63,7 +63,15 @@ export async function POST(req, res) {
 
   console.log("success login");
 
-  return NextResponse.json({ token, username: user.username, role: user.role, preferences: user.preferences });
+  // check if the user is registered for notifications
+  let device_registered = false;
+  if (user.notifications && user.notifications.device) {
+    if (user.notifications.device.token.length > 0) {
+      device_registered = true;
+    }
+  }
+
+  return NextResponse.json({ token, username: user.username, role: user.role, preferences: user.preferences, device_registered });
 }
 
 // Register handler
