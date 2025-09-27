@@ -31,7 +31,7 @@ export async function POST(req, res) {
 
   // Do some validation here
   const user = await User.findOne({ username: username })
-    .select("hash username active role preferences")
+    .select("hash username active role preferences notifications")
     .catch((e) => {
       // Do some more error hanlding here
       return NextResponse.json({ error: "user not found" }, { status: 404 });
@@ -64,12 +64,7 @@ export async function POST(req, res) {
   console.log("success login");
 
   // check if the user is registered for notifications
-  let device_registered = false;
-  if (user.notifications && user.notifications.device) {
-    if (user.notifications.device.token.length() > 0) {
-      device_registered = true;
-    }
-  }
+  const device_registered = user.notifications?.device?.token?.length > 0 || false;
 
   return NextResponse.json({ token, username: user.username, role: user.role, preferences: user.preferences, device_registered });
 }

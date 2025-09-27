@@ -57,6 +57,7 @@ const authOnly = [
   "/api/meals",
   "/api/preferences",
   "/api/preferences/notifications",
+  "/api/preferences/notifications/addDevice",
   "/api/home",
   "/api/home/meals",
   "/api/logs",
