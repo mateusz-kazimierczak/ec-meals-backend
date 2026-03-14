@@ -4,14 +4,20 @@ export const DS_TIMEZONE_CONSTANT = -5;
 import moment from "moment-timezone";
 
 
+const getUpdateTimeStr = (date) => {
+  const day = date.day();
+  return (day === 0 || day === 6)
+    ? process.env.UPDATE_TIME_WEEKEND
+    : process.env.UPDATE_TIME;
+};
+
 export const getNextUpdateTime = () => { // Fixed
   let disabledDayIndex;
+  const now = new Date();
   const nextUpdateTime = moment().tz("America/Toronto");
 
-
-  nextUpdateTime.set({ hour: process.env.UPDATE_TIME.slice(0, 2), minute: process.env.UPDATE_TIME.slice(2), second: 0 });
-
-  const now = new Date();
+  const todayTimeStr = getUpdateTimeStr(nextUpdateTime);
+  nextUpdateTime.set({ hour: todayTimeStr.slice(0, 2), minute: todayTimeStr.slice(2), second: 0 });
 
   if (isBeforeUpdateTime(now)) {
     const prevDay = nextUpdateTime.clone().add(-1, "days");
@@ -19,6 +25,8 @@ export const getNextUpdateTime = () => { // Fixed
   } else {
     disabledDayIndex = getAppDayIndex(nextUpdateTime);
     nextUpdateTime.add(1, "days");
+    const tomorrowTimeStr = getUpdateTimeStr(nextUpdateTime);
+    nextUpdateTime.set({ hour: tomorrowTimeStr.slice(0, 2), minute: tomorrowTimeStr.slice(2), second: 0 });
   }
 
   return [nextUpdateTime, disabledDayIndex];
@@ -49,12 +57,11 @@ export const dayString = (date = moment(new Date())) => {
 
 export const isBeforeUpdateTime = (date) => { // Fixed
   const todayUpdatetime = moment(date).tz("America/Toronto");
+  const updateTimeStr = getUpdateTimeStr(todayUpdatetime);
 
-  todayUpdatetime.set({ hour: process.env.UPDATE_TIME.slice(0, 2), minute: process.env.UPDATE_TIME.slice(2) });
-
+  todayUpdatetime.set({ hour: updateTimeStr.slice(0, 2), minute: updateTimeStr.slice(2) });
 
   return date < todayUpdatetime;
-
 }
 
 export const reconstructDate = (date) => {
