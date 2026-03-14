@@ -15,9 +15,6 @@ export async function GET(req) {
 }
 
 export async function POST(req) {
-  const role = req.headers.get("userRole");
-  if (role !== "admin") return Response.json({ error: "Forbidden" }, { status: 403 });
-
   const body = await req.json();
   if (!body._id) return Response.json({ error: "_id required" }, { status: 400 });
 
