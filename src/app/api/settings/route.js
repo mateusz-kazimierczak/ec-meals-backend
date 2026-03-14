@@ -27,22 +27,35 @@ export async function POST(req) {
 
   revalidateTag("settings");
 
-  // Trigger settings_sync DAG via Airflow API (Basic auth — avoids token exchange redirect issues)
+  // Trigger settings_sync DAG via Airflow API
   try {
-    const basicAuth = Buffer.from(`${process.env.AIRFLOW_USER}:${process.env.AIRFLOW_PASSWORD}`).toString("base64");
-    const dagRes = await fetch(`${process.env.AIRFLOW_API_URL}/api/v2/dags/settings_sync/dagRuns`, {
+    const airflowUrl = (process.env.AIRFLOW_API_URL ?? "").replace(/\/+$/, "");
+
+    const tokenRes = await fetch(`${airflowUrl}/auth/token`, {
       method: "POST",
-      headers: {
-        Authorization: `Basic ${basicAuth}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ logical_date: new Date().toISOString(), conf: { env: "prod" } }),
-      redirect: "manual"
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        username: process.env.AIRFLOW_USER,
+        password: process.env.AIRFLOW_PASSWORD,
+      }),
     });
-    if (!dagRes.ok) {
-      console.error("Airflow DAG trigger failed:", dagRes.status, await dagRes.text());
+    if (!tokenRes.ok) {
+      console.error("Airflow auth failed:", tokenRes.status, await tokenRes.text());
     } else {
-      console.log("settings_sync DAG triggered successfully");
+      const { access_token } = await tokenRes.json();
+      const dagRes = await fetch(`${airflowUrl}/api/v2/dags/settings_sync/dagRuns`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${access_token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ logical_date: new Date().toISOString(), conf: { env: "prod" } }),
+      });
+      if (!dagRes.ok) {
+        console.error("Airflow DAG trigger failed:", dagRes.status, await dagRes.text());
+      } else {
+        console.log("settings_sync DAG triggered successfully");
+      }
     }
   } catch (err) {
     // Non-fatal: settings are saved; DAG sync will pick up on next manual trigger
