@@ -29,19 +29,32 @@ export async function POST(req) {
 
   // Trigger settings_sync DAG via Airflow API
   try {
-    const dagRes = await fetch(`${process.env.AIRFLOW_API_URL}/api/v2/dags/settings_sync/dagRuns`, {
+    const tokenRes = await fetch(`${process.env.AIRFLOW_API_URL}/auth/token`, {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${process.env.AIRFLOW_API_TOKEN}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ conf: { env: "prod" } }),
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        username: process.env.AIRFLOW_USER,
+        password: process.env.AIRFLOW_PASSWORD,
+      }),
     });
-    if (!dagRes.ok) {
-      const text = await dagRes.text();
-      console.error("Airflow DAG trigger failed:", dagRes.status, text);
+
+    if (!tokenRes.ok) {
+      console.error("Airflow auth failed:", tokenRes.status, await tokenRes.text());
     } else {
-      console.log("settings_sync DAG triggered successfully");
+      const { access_token } = await tokenRes.json();
+      const dagRes = await fetch(`${process.env.AIRFLOW_API_URL}/api/v2/dags/settings_sync/dagRuns`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${access_token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ conf: { env: "prod" } }),
+      });
+      if (!dagRes.ok) {
+        console.error("Airflow DAG trigger failed:", dagRes.status, await dagRes.text());
+      } else {
+        console.log("settings_sync DAG triggered successfully");
+      }
     }
   } catch (err) {
     // Non-fatal: settings are saved; DAG sync will pick up on next manual trigger
