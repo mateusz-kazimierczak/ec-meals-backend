@@ -7,7 +7,7 @@ import moment from "moment-timezone";
 const getUpdateTimeStr = (date) => {
   const day = date.day();
   return (day === 0 || day === 6)
-    ? process.env.UPDATE_TIME_WEEKEND
+    ? (process.env.UPDATE_TIME_WEEKEND ?? process.env.UPDATE_TIME)
     : process.env.UPDATE_TIME;
 };
 
