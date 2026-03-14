@@ -37,7 +37,6 @@ export async function POST(req) {
         password: process.env.AIRFLOW_PASSWORD,
       }),
     });
-
     if (!tokenRes.ok) {
       console.error("Airflow auth failed:", tokenRes.status, await tokenRes.text());
     } else {
