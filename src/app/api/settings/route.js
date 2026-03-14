@@ -38,9 +38,12 @@ export async function POST(req) {
       }),
     });
 
-    if (tokenRes.ok) {
+    if (!tokenRes.ok) {
+      const text = await tokenRes.text();
+      console.error("Airflow auth failed:", tokenRes.status, text);
+    } else {
       const { access_token } = await tokenRes.json();
-      await fetch(`${process.env.AIRFLOW_API_URL}/api/v2/dags/settings_sync/dagRuns`, {
+      const dagRes = await fetch(`${process.env.AIRFLOW_API_URL}/api/v2/dags/settings_sync/dagRuns`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${access_token}`,
@@ -48,6 +51,12 @@ export async function POST(req) {
         },
         body: JSON.stringify({ conf: { env: "prod" } }),
       });
+      if (!dagRes.ok) {
+        const text = await dagRes.text();
+        console.error("Airflow DAG trigger failed:", dagRes.status, text);
+      } else {
+        console.log("settings_sync DAG triggered successfully");
+      }
     }
   } catch (err) {
     // Non-fatal: settings are saved; DAG sync will pick up on next manual trigger
