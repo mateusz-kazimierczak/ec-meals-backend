@@ -2,6 +2,8 @@ import connectDB from "@/_helpers/db/connect";
 import User from "@/_helpers/db/models/User";
 import Day from "@/_helpers/db/models/Day";
 import moment from "moment-timezone";
+import { getSetting } from "@/_helpers/settings";
+import { isBeforeUpdateTime } from "@/_helpers/time";
 
 
 export const dynamic = "force-dynamic";
@@ -24,16 +26,14 @@ const getUserMeals = async (forUser) => {
 
   let todayMeals, tomorrowMeals;
 
+  const scheduleSetting = await getSetting("schedule");
+
   // Get update time today
   const current_time = new Date();
   const time_toronto = moment(current_time).tz("America/Toronto");
   const tomorrow_time_toronto = time_toronto.clone().add(1, "day");
 
-  // Set the hour in Toronto time
-  let update_time = time_toronto.clone().set({ hour: process.env.UPDATE_TIME.slice(0, 2), minute: process.env.UPDATE_TIME.slice(2) });
-
-
-  if (current_time > update_time) {
+  if (!isBeforeUpdateTime(current_time, scheduleSetting)) {
     // After update time today
     // fetch meals from database
 

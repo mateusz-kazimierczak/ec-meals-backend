@@ -2,7 +2,8 @@ import connectDB from "@/_helpers/db/connect";
 import User from "@/_helpers/db/models/User";
 import Day from "@/_helpers/db/models/Day";
 import mongoose from "mongoose";
-import { reconstructDate, isWithinAWeek, getAppDayIndex, isToday, isNowPastUpdateTime, isTomorrow, isNDaysFromNow, isAfterNDays, isDayPast } from "@/_helpers/time";
+import { reconstructDate, isWithinAWeek, getAppDayIndex, isToday, isNowPastUpdateTime, isTomorrow, isNDaysFromNow, isAfterNDays, isDayPast, withUpdateTime } from "@/_helpers/time";
+import { getSetting } from "@/_helpers/settings";
 import { parse } from "path";
 import moment from "moment-timezone";
 
@@ -19,12 +20,10 @@ export async function POST(req, res) {
     )])
 
 
-  // Get the actual data from the string
-  const date = moment(reconstructDate(body.date))
-  const now = new Date();
-  
-  date.set({ hour: process.env.UPDATE_TIME.slice(0, 2), minute: process.env.UPDATE_TIME.slice(2) });
+  const scheduleSetting = await getSetting("schedule");
 
+  // Get the actual data from the string — set the update time for that date's day of week
+  const date = withUpdateTime(moment(reconstructDate(body.date)), scheduleSetting);
 
   let allMeals;
 

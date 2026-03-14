@@ -2,31 +2,55 @@ export const NDS_TIMEZONE_CONSTANT = -4;
 export const DS_TIMEZONE_CONSTANT = -5;
 
 import moment from "moment-timezone";
+import { parseExpression } from "cron-parser";
 
-
-const getUpdateTimeStr = (date) => {
-  const day = date.day();
-  return (day === 0 || day === 6)
+/**
+ * Given a moment date and a list of cron strings, return { hour, minute } for
+ * the cron that applies to that day of week, or null if none match.
+ * Falls back to process.env.UPDATE_TIME[_WEEKEND] if no crons list provided.
+ */
+const getUpdateTimeForDay = (date, crons) => {
+  if (crons && crons.length > 0) {
+    const day = date.day(); // moment: 0=Sun, 1=Mon, ..., 6=Sat
+    for (const cron of crons) {
+      try {
+        const { fields } = parseExpression(cron);
+        // fields.dayOfWeek is an array; 0 and 7 both represent Sunday
+        if (fields.dayOfWeek.includes(day)) {
+          return { hour: fields.hour[0], minute: fields.minute[0] };
+        }
+      } catch { /* invalid cron string, skip */ }
+    }
+    return null;
+  }
+  // Legacy fallback: HHMM env vars
+  const timeStr = (date.day() === 0 || date.day() === 6)
     ? (process.env.UPDATE_TIME_WEEKEND ?? process.env.UPDATE_TIME)
     : process.env.UPDATE_TIME;
+  if (!timeStr) return null;
+  return { hour: parseInt(timeStr.slice(0, 2)), minute: parseInt(timeStr.slice(2)) };
 };
 
-export const getNextUpdateTime = () => { // Fixed
+export const getNextUpdateTime = (settings) => { // Fixed
   let disabledDayIndex;
   const now = new Date();
   const nextUpdateTime = moment().tz("America/Toronto");
 
-  const todayTimeStr = getUpdateTimeStr(nextUpdateTime);
-  nextUpdateTime.set({ hour: todayTimeStr.slice(0, 2), minute: todayTimeStr.slice(2), second: 0 });
+  const todayTime = getUpdateTimeForDay(nextUpdateTime, settings?.crons);
+  if (todayTime) {
+    nextUpdateTime.set({ hour: todayTime.hour, minute: todayTime.minute, second: 0 });
+  }
 
-  if (isBeforeUpdateTime(now)) {
+  if (isBeforeUpdateTime(now, settings)) {
     const prevDay = nextUpdateTime.clone().add(-1, "days");
     disabledDayIndex = getAppDayIndex(prevDay);
   } else {
     disabledDayIndex = getAppDayIndex(nextUpdateTime);
     nextUpdateTime.add(1, "days");
-    const tomorrowTimeStr = getUpdateTimeStr(nextUpdateTime);
-    nextUpdateTime.set({ hour: tomorrowTimeStr.slice(0, 2), minute: tomorrowTimeStr.slice(2), second: 0 });
+    const tomorrowTime = getUpdateTimeForDay(nextUpdateTime, settings?.crons);
+    if (tomorrowTime) {
+      nextUpdateTime.set({ hour: tomorrowTime.hour, minute: tomorrowTime.minute, second: 0 });
+    }
   }
 
   return [nextUpdateTime, disabledDayIndex];
@@ -55,11 +79,24 @@ export const dayString = (date = moment(new Date())) => {
 }
 
 
-export const isBeforeUpdateTime = (date) => { // Fixed
-  const todayUpdatetime = moment(date).tz("America/Toronto");
-  const updateTimeStr = getUpdateTimeStr(todayUpdatetime);
+/**
+ * Return a clone of dateMoment with the update time for its day of week set.
+ * Useful for checking "has the update time for this specific date already passed?"
+ */
+export const withUpdateTime = (dateMoment, settings) => {
+  const clone = dateMoment.clone();
+  const updateTime = getUpdateTimeForDay(clone, settings?.crons);
+  if (updateTime) clone.set({ hour: updateTime.hour, minute: updateTime.minute, second: 0 });
+  return clone;
+};
 
-  todayUpdatetime.set({ hour: updateTimeStr.slice(0, 2), minute: updateTimeStr.slice(2) });
+export const isBeforeUpdateTime = (date, settings) => { // Fixed
+  const todayUpdatetime = moment(date).tz("America/Toronto");
+  const updateTime = getUpdateTimeForDay(todayUpdatetime, settings?.crons);
+
+  if (!updateTime) return true; // no cron for today = treat as before update time
+
+  todayUpdatetime.set({ hour: updateTime.hour, minute: updateTime.minute });
 
   return date < todayUpdatetime;
 }
@@ -85,7 +122,7 @@ export const isWithin5Days = (date) => {
 }
 
 export const isWithinAWeek = (date) => { // fixed
-  
+
   const in7days = moment().tz("America/Toronto").add(7, "days");
 
   if (date <= in7days) return true;
@@ -110,17 +147,17 @@ export const getAppDayIndex = (date) => { // Fixed
   return dayIndex;
 }
 
-export const isTodayAndAfterUpdateTime = (date) => { // Fixed
+export const isTodayAndAfterUpdateTime = (date, settings) => { // Fixed
 
   if (!date.day) date = moment(date);
-  
+
   const today = new Date();
 
   if (date.day() != today.getDay()) {
     return false;
   }
 
-  if (isBeforeUpdateTime(date)) {
+  if (isBeforeUpdateTime(date, settings)) {
     return false;
   }
 
@@ -132,7 +169,7 @@ export const isToday = (date) => { // Fixed
   return moment().tz("America/Toronto").isSame(date, "day");
 }
 
-export const isNowPastUpdateTime = () => !isBeforeUpdateTime(new Date()) // Fixed
+export const isNowPastUpdateTime = (settings) => !isBeforeUpdateTime(new Date(), settings) // Fixed
 
 export const isTomorrow = (date) => { // Fixed
   // Check if the date is tomorrow
