@@ -3,6 +3,7 @@ import User from "@/_helpers/db/models/User";
 import { cookies } from "next/headers";
 
 import { getNextUpdateTime } from "@/_helpers/time";
+import { getSetting } from "@/_helpers/settings";
 import moment from "moment-timezone";
 
 import { BigQuery } from "@google-cloud/bigquery";
@@ -22,13 +23,16 @@ export async function GET(req, res) {
     return Response.json({ message: "Unauthorized" }, { status: 403 });
   }
 
-  const data = await User.findById(forUser, "meals firstName");
+  const [data, scheduleSetting] = await Promise.all([
+    User.findById(forUser, "meals firstName"),
+    getSetting("schedule"),
+  ]);
 
   if (!data) {
     return Response.json({ message: "User not found" }, { status: 404 });
   }
 
-  const [updateTime, disabledDay] = getNextUpdateTime();
+  const [updateTime, disabledDay] = getNextUpdateTime(scheduleSetting);
 
 
 

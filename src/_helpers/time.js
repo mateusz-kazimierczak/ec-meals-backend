@@ -2,7 +2,7 @@ export const NDS_TIMEZONE_CONSTANT = -4;
 export const DS_TIMEZONE_CONSTANT = -5;
 
 import moment from "moment-timezone";
-import { parseExpression } from "cron-parser";
+import { CronExpressionParser } from "cron-parser";
 
 /**
  * Given a moment date and a list of cron strings, return { hour, minute } for
@@ -11,15 +11,20 @@ import { parseExpression } from "cron-parser";
  */
 const getUpdateTimeForDay = (date, crons) => {
   if (crons && crons.length > 0) {
-    const day = date.day(); // moment: 0=Sun, 1=Mon, ..., 6=Sat
+    // Start of the given day in Toronto time — used as the iteration start for each cron
+    const startOfDay = date.clone().startOf("day").toDate();
     for (const cron of crons) {
       try {
-        const { fields } = parseExpression(cron);
-        // fields.dayOfWeek is an array; 0 and 7 both represent Sunday
-        if (fields.dayOfWeek.includes(day)) {
-          return { hour: fields.hour[0], minute: fields.minute[0] };
+        const expr = CronExpressionParser.parse(cron, { currentDate: startOfDay, tz: "America/Toronto" });
+        const next = expr.next().toDate();
+        const nextMoment = moment(next).tz("America/Toronto");
+        // If the next occurrence falls on the same calendar day, this cron covers today
+        if (nextMoment.isSame(date, "day")) {
+          return { hour: nextMoment.hour(), minute: nextMoment.minute() };
         }
-      } catch { /* invalid cron string, skip */ }
+      } catch (e) {
+        console.log(`[getUpdateTimeForDay] parse error for cron="${cron}":`, e.message);
+      }
     }
     return null;
   }
