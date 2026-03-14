@@ -48,7 +48,7 @@ export async function POST(req) {
           Authorization: `Bearer ${access_token}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ conf: { env: "prod" } }),
+        body: JSON.stringify({ logical_date: new Date().toISOString(), conf: { env: "prod" } }),
       });
       if (!dagRes.ok) {
         console.error("Airflow DAG trigger failed:", dagRes.status, await dagRes.text());
