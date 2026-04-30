@@ -51,7 +51,7 @@ export default async function middleware(req, res) {
   }
 }
 
-const adminOnly = ["/api/users/all", "/api/diets", "/api/settings"];
+const adminOnly = ["/api/users/all", "/api/users/batch/notifications", "/api/diets", "/api/settings"];
 const authOnly = [
   "/api/users/single",
   "/api/meals",
