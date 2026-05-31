@@ -6,6 +6,6 @@ export const registerUserSchema = Joi.object({
   firstName: Joi.string().required(),
   lastName: Joi.string().required(),
   birthday: Joi.date().required(),
-  role: Joi.string().valid("student", "admin", "numerary").required(),
+  role: Joi.string().valid("student", "admin", "numerary", "activity_editor").required(),
   active: Joi.boolean(),
 });

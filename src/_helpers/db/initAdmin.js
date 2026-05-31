@@ -16,6 +16,7 @@ export default async function initAdmin() {
         firstName: "admin",
         lastName: "admin",
         role: "admin",
+        email: process.env.ADMIN_EMAIL || undefined,
       });
       initUser(admin);
       try {

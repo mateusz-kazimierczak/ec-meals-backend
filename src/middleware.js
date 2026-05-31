@@ -20,10 +20,13 @@ export default async function middleware(req, res) {
     });
   }
 
+  const pathname = req.nextUrl.pathname;
+
   // Path does not require any authentication
   if (
-    !adminOnly.includes(req.nextUrl.pathname) &&
-    !authOnly.includes(req.nextUrl.pathname)
+    !adminOnly.some((p) => pathname.startsWith(p)) &&
+    !authOnly.some((p) => pathname.startsWith(p)) &&
+    !activityEditorOrAdmin.some((p) => pathname.startsWith(p))
   ) {
     return NextResponse.next();
   }
@@ -39,12 +42,16 @@ export default async function middleware(req, res) {
     response.headers.append("userID", user.payload.id);
     response.headers.append("userRole", user.payload.role);
 
-    if (adminOnly.includes(req.nextUrl.pathname)) {
+    if (adminOnly.some((p) => pathname.startsWith(p))) {
       if (user.payload.role == "admin") return response;
-      else {
-        return invalidAuthRes;
-      }
+      return invalidAuthRes;
     }
+
+    if (activityEditorOrAdmin.some((p) => pathname.startsWith(p))) {
+      if (user.payload.role === "admin" || user.payload.role === "activity_editor") return response;
+      return invalidAuthRes;
+    }
+
     return response;
   } catch (err) {
     return invalidAuthRes;
@@ -52,6 +59,7 @@ export default async function middleware(req, res) {
 }
 
 const adminOnly = ["/api/users/all", "/api/users/batch/notifications", "/api/diets", "/api/settings"];
+const activityEditorOrAdmin = ["/api/activities"];
 const authOnly = [
   "/api/users/single",
   "/api/meals",
