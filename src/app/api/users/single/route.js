@@ -4,6 +4,7 @@ import bcrypt from "bcryptjs";
 
 import { NextResponse } from "next/server";
 import initUser from "@/_helpers/db/initUser";
+import { buildAuditRowDiff, logUserSettingsChange } from "@/_helpers/userSettingsAudit";
 
 import { sendWelcomeEmail } from "@/_helpers/emails";
 import { Types } from "mongoose";
@@ -42,6 +43,38 @@ const buildUser = async (ujson) => {
   return user;
 };
 
+const getUserAuditSnapshot = (user) => {
+  if (!user) return {};
+
+  return {
+    firstName: user.firstName || null,
+    lastName: user.lastName || null,
+    username: user.username || null,
+    email: user.email || null,
+    role: user.role || null,
+    room: user.room || null,
+    active: !!user.active,
+    guest: !!user.guest,
+    diet: user.diet || null,
+    birthdayDay: user.birthdayDay ?? null,
+    birthdayMonth: user.birthdayMonth ?? null,
+  };
+};
+
+const USER_AUDIT_FIELDS = [
+  "firstName",
+  "lastName",
+  "username",
+  "email",
+  "role",
+  "room",
+  "active",
+  "guest",
+  "diet",
+  "birthdayDay",
+  "birthdayMonth",
+];
+
 export async function GET(req, res) {
   await connectDB();
   let user_id = req.headers.get("user_id");
@@ -73,14 +106,47 @@ export async function PATCH(req, res) {
   if (!user_id || user_id == "undefined") user_id = req.headers.get("userID");
 
   const data = await req.json();
+  const actorUserId = req.headers.get("userID");
+  const actorRole = req.headers.get("userRole");
+
+  const beforeUser = await User.findById(user_id, "firstName lastName username email role room active guest diet birthdayDay birthdayMonth").lean();
+  const beforeSnapshot = getUserAuditSnapshot(beforeUser);
 
   const user = await buildUser(data);
+  const passwordChanged = Boolean(user.hash);
 
   console.log("new user data", user.diet);
 
   await User.findOneAndUpdate({ _id: user_id }, user).catch((err) => {
     console.log(err);
   });
+
+  const afterUser = await User.findById(user_id, "firstName lastName username email role room active guest diet birthdayDay birthdayMonth").lean();
+  const afterSnapshot = getUserAuditSnapshot(afterUser);
+
+  const diff = buildAuditRowDiff(beforeSnapshot, afterSnapshot, USER_AUDIT_FIELDS);
+
+  if (diff.changedFields.length > 0 || passwordChanged) {
+    if (passwordChanged && !diff.changedFields.includes("password")) {
+      diff.changedFields.push("password");
+    }
+
+    await logUserSettingsChange({
+      actorUserId,
+      actorRole,
+      targetUserId: user_id,
+      changeType: "USER_PROFILE_UPDATE",
+      changedFields: diff.changedFields,
+      oldValues: diff.oldValues,
+      newValues: diff.newValues,
+      metadata: {
+        passwordChanged,
+        requestPath: req.nextUrl.pathname,
+      },
+      requestPath: req.nextUrl.pathname,
+      userAgent: req.headers.get("user-agent"),
+    });
+  }
 
   console.log("user updated");
 

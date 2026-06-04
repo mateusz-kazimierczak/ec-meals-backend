@@ -3,8 +3,19 @@ import User from "@/_helpers/db/models/User";
 import { NextResponse } from "next/server";
 
 import { defaultNotificationPreferences } from "../../../preferences/notifications/defaults";
+import { buildAuditRowDiff, logUserSettingsChange } from "@/_helpers/userSettingsAudit";
 
 const cloneDefaults = () => JSON.parse(JSON.stringify(defaultNotificationPreferences));
+
+const NOTIFICATION_FIELDS = ["notificationTypes", "schedule", "schema", "report", "device"];
+
+const getNotificationSnapshot = (notifications = {}) => ({
+  notificationTypes: notifications.notificationTypes || null,
+  schedule: notifications.schedule || null,
+  schema: notifications.schema || null,
+  report: notifications.report || null,
+  device: notifications.device || null,
+});
 
 export async function POST(req) {
   await connectDB();
@@ -38,6 +49,8 @@ export async function POST(req) {
   }
 
   const users = await User.find({ _id: { $in: userIds } }, "_id firstName lastName email notifications");
+  const actorUserId = req.headers.get("userID");
+  const actorRole = req.headers.get("userRole");
 
   await Promise.all(
     users.map(async (user) => {
@@ -46,6 +59,8 @@ export async function POST(req) {
         typeof user.notifications?.toObject === "function"
           ? user.notifications.toObject()
           : user.notifications || {};
+
+      const beforeSnapshot = getNotificationSnapshot(existingNotifications);
 
       user.notifications = {
         ...defaults,
@@ -71,6 +86,30 @@ export async function POST(req) {
 
       user.markModified("notifications");
       await user.save();
+
+      const afterSnapshot = getNotificationSnapshot(user.notifications);
+      const diff = buildAuditRowDiff(beforeSnapshot, afterSnapshot, NOTIFICATION_FIELDS);
+
+      if (diff.changedFields.length > 0) {
+        return logUserSettingsChange({
+          actorUserId,
+          actorRole,
+          targetUserId: user._id.toString(),
+          changeType: "NOTIFICATION_PREFERENCES_BATCH_UPDATE",
+          changedFields: diff.changedFields,
+          oldValues: diff.oldValues,
+          newValues: diff.newValues,
+          metadata: {
+            sectionsToModify,
+            requestPath: req.nextUrl.pathname,
+          },
+          isBatch: true,
+          requestPath: req.nextUrl.pathname,
+          userAgent: req.headers.get("user-agent"),
+        });
+      }
+
+      return undefined;
     })
   );
 

@@ -98,6 +98,7 @@ npm run email   # React Email preview server
 |---|---|---|
 | GET/POST/DELETE | `/api/diets` | Manage diet types |
 | GET | `/api/logs` | View audit logs |
+| GET | `/api/logs/userSettings` | View user settings audit logs |
 | GET | `/api/internal/dailyUpdate` | Trigger daily update (cron) |
 | GET | `/api/internal/init` | Initialize admin user |
 
@@ -148,7 +149,9 @@ The daily cron job shifts this matrix forward by one day, rolling the week over 
 ## Data Storage
 
 - **MongoDB**: User profiles, daily meal records, diet types, preferences
-- **BigQuery**: Immutable audit log of all meal changes (`ec-meals-462913.meal_history.HISTORY`)
+- **BigQuery**:
+  - Meal change log: `ec-meals-462913.meal_history.HISTORY`
+  - User settings change log: `ec-meals-462913.meal_history.USER_SETTINGS_HISTORY`
 
 ## Deployment (Vercel)
 
