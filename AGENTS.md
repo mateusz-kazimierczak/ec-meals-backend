@@ -13,14 +13,12 @@ Next.js 14 API backend for the EC Meals system. Handles authentication, meal sch
 
 ## Key Files
 - `src/app/api/` — All API route handlers
-- `src/app/api/internal/dailyUpdate/route.js` — Cron job: updates meal matrices, sends emails, logs to BigQuery
 - `src/middleware.js` — JWT verification; injects `userID` and `userRole` into response headers
 - `src/_helpers/db/connect.js` — Mongoose connection with global caching
 - `src/_helpers/db/models/` — Mongoose schemas: `User`, `Day`, `Diet`
 - `src/_helpers/time.js` — Timezone utilities (all logic uses America/Toronto)
 - `src/_helpers/emails.jsx` — Email sending helpers using Resend
 - `emails/` — React Email templates (`DailyEmail.jsx`, `WelcomeEmail.jsx`)
-- `vercel.json` — Cron schedule: `30 8 * * *` (8:30 AM daily)
 - `.env.local` — All secrets
 
 ## Environment Variables
@@ -29,7 +27,7 @@ Next.js 14 API backend for the EC Meals system. Handles authentication, meal sch
 | `MONGODB_URI` | MongoDB Atlas connection string |
 | `JWT_SECRET` | JWT signing secret |
 | `ADMIN_USERNAME` / `ADMIN_PASSWORD` / `ADMIN_EMAIL` | Initial admin credentials |
-| `UPDATE_TIME` | Daily cron trigger time in HHMM (e.g. `0830`) |
+| `UPDATE_TIME` | Daily schedule cutoff time in HHMM (legacy fallback if DB schedule config is absent) |
 | `RESEND_API_KEY` | Resend email API key |
 | `ENABLE_EMAIL` | `true` / `false` to toggle emails |
 | `GCP_AUTH` | Google Cloud service account JSON (stringified) |
@@ -55,8 +53,6 @@ npm run email   # React Email dev server
 | POST | `/api/preferences/notifications/addDevice` | User | Register push token |
 | GET/POST/DELETE | `/api/diets` | Admin | Diet management |
 | GET | `/api/logs` | User | Change logs |
-| GET | `/api/internal/dailyUpdate` | Internal | Trigger daily cron |
-
 ## Architecture Notes
 - **Meal matrix**: Users store a 7-day × 7-slot matrix. Indices 0-2 = B/L/D, 3-5 = packed P1/P2/PS, 6 = no-meals flag
 - **Timezone**: All date/time logic hardcoded to `America/Toronto` via `moment-timezone`
@@ -64,12 +60,5 @@ npm run email   # React Email dev server
 - **Predictive vs historical**: Future dates → compute from user matrices; past dates → return stored Day documents
 - **Middleware**: Protected routes checked in `src/middleware.js`; role check (admin) done inline in route handlers
 
-## Cron Job Behavior (dailyUpdate)
-1. Advances each user's meal matrix by one day
-2. Creates a `Day` document for today with all scheduled meals
-3. Sends daily summary emails via Resend
-4. Logs meal changes to BigQuery
-
 ## Known Issues / TODOs (from README)
-- Users may be added twice in daily update — needs deduplication guard
 - Email sending can time out on Vercel's serverless function limit

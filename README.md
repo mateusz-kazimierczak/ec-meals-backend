@@ -1,17 +1,12 @@
 # EC Meals Backend
 
-Next.js 14 API server powering the EC Meals system. Handles user authentication, meal scheduling, daily automated updates, email summaries, and meal history analytics.
+Next.js 14 API server powering the EC Meals system. Handles user authentication, meal scheduling, admin day management, email summaries, and meal history analytics.
 
 ## What It Does
 
 - Authenticates users and issues JWT tokens
 - Stores and retrieves user meal preferences (7-day rolling matrix)
 - Provides daily meal rosters for admin views and kitchen planning
-- Runs a daily cron job (8:30 AM Toronto time) that:
-  - Advances every user's meal schedule by one day
-  - Creates a snapshot of the day's meals in MongoDB
-  - Sends a daily summary email to all users
-  - Logs meal changes to Google BigQuery
 - Manages push notification device registration
 
 ## Tech Stack
@@ -23,7 +18,6 @@ Next.js 14 API server powering the EC Meals system. Handles user authentication,
 | Auth | JWT (jose + jsonwebtoken) + bcryptjs |
 | Email | Resend + React Email |
 | Analytics | Google BigQuery |
-| Cron | Vercel Cron (built-in) |
 | Deployment | Vercel |
 
 ## Getting Started
@@ -51,14 +45,12 @@ ADMIN_PASSWORD=your-admin-password
 ADMIN_EMAIL=admin@example.com
 JWT_SECRET=your-secret-key
 
-UPDATE_TIME=0830  # 8:30 AM — keep in sync with cron schedule in vercel.json
+UPDATE_TIME=0830  # Legacy fallback if no schedule config exists in MongoDB settings
 
 RESEND_API_KEY=re_...
 ENABLE_EMAIL=true
 GCP_AUTH={"type":"service_account",...}
 ```
-
-> **Note**: When changing `UPDATE_TIME`, also update the cron schedule in `vercel.json`.
 
 ### Running
 
@@ -99,7 +91,6 @@ npm run email   # React Email preview server
 | GET/POST/DELETE | `/api/diets` | Manage diet types |
 | GET | `/api/logs` | View audit logs |
 | GET | `/api/logs/userSettings` | View user settings audit logs |
-| GET | `/api/internal/dailyUpdate` | Trigger daily update (cron) |
 | GET | `/api/internal/init` | Initialize admin user |
 
 ## Project Structure
@@ -126,7 +117,6 @@ ec-meals-backend/
 │   │   └── time.js           # Timezone utilities
 │   └── middleware.js         # JWT auth middleware
 ├── emails/                   # React Email templates
-├── vercel.json               # Cron schedule config
 └── .env.local                # Environment variables (create this manually)
 ```
 
@@ -144,7 +134,7 @@ Each user stores a 7-element array (one slot per day of the week). Each day slot
 | 5 | Packed meal PS |
 | 6 | No meals flag |
 
-The daily cron job shifts this matrix forward by one day, rolling the week over automatically.
+The active daily matrix shift now runs from the Airflow `daily_meals_update` DAG in `meal-DAGs/`.
 
 ## Data Storage
 
@@ -153,17 +143,10 @@ The daily cron job shifts this matrix forward by one day, rolling the week over 
   - Meal change log: `ec-meals-462913.meal_history.HISTORY`
   - User settings change log: `ec-meals-462913.meal_history.USER_SETTINGS_HISTORY`
 
-## Deployment (Vercel)
+## Deployment
 
-The app deploys to Vercel automatically. The cron job in `vercel.json` triggers `/api/internal/dailyUpdate` at 8:30 AM UTC daily.
-
-```json
-{
-  "crons": [{"path": "/api/internal/dailyUpdate", "schedule": "30 8 * * *"}]
-}
-```
+The app deploys as a standard long-running Next.js API service. Daily meal advancement is handled outside this repo segment by the Airflow DAGs in `meal-DAGs/`.
 
 ## Known Issues / Todo
 
-- Users can occasionally be added twice during the daily update — a deduplication check should be added
 - Email sending on Vercel can hit the serverless function timeout limit on large user sets
