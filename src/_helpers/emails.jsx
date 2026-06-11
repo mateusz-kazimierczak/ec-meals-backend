@@ -1,15 +1,17 @@
-import WelcomeEmail from "../../emails/WelcomeEmail";
-import DailyEmail from "../../emails/DailyEmail";
-import { Resend } from "resend";
+import { EMAIL_SENDER } from "./CONST.js";
 
-import {EMAIL_SENDER} from './CONST'
+let resendClient;
 
-const resendApiKey = process.env.RESEND_API_KEY
-
-const resend = new Resend(resendApiKey);
-
+const getResend = async () => {
+  if (resendClient) return resendClient;
+  const { Resend } = await import("resend");
+  resendClient = new Resend(process.env.RESEND_API_KEY);
+  return resendClient;
+};
 
 export const sendWelcomeEmail = async (user, pass) => {
+    const resend = await getResend();
+    const { default: WelcomeEmail } = await import("../../emails/WelcomeEmail.jsx");
     console.log("Sending welcome email to", user.email);
     await resend.emails.send({
       from: EMAIL_SENDER,
@@ -25,6 +27,8 @@ export const sendWelcomeEmail = async (user, pass) => {
   
 export const sendMealEmails = async (users) => {
     if (process.env.ENABLE_EMAIL != "true") return console.log("Skipping email sending");
+    const resend = await getResend();
+    const { default: DailyEmail } = await import("../../emails/DailyEmail.jsx");
 
     console.log("Sending meal emails to ", users.length, " users");
     if (users.length === 0) return;

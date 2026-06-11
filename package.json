@@ -2,38 +2,32 @@
   "name": "bec",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
-    "dev": "NODE_OPTIONS=\"--inspect\" next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "next lint",
-    "email": "email dev"
+    "dev": "tsx watch src/server.js",
+    "build": "tsx -e \"import('./src/app.js').then(({buildApp}) => buildApp({logger:false}).close())\"",
+    "start": "tsx src/server.js",
+    "lint": "node --check src/server.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "email": "echo 'React Email preview is not installed in the Fastify backend runtime.'"
   },
   "dependencies": {
-    "@google-cloud/bigquery": "^8.1.0",
-    "@react-email/components": "^0.0.13",
-    "@react-email/container": "0.0.11",
-    "@react-email/html": "0.0.7",
-    "@react-email/render": "0.0.11",
-    "@react-email/section": "0.0.11",
-    "@react-email/text": "0.0.7",
-    "bcrypt": "^5.1.1",
+    "@fastify/cors": "^11.0.0",
+    "@react-email/components": "^1.0.12",
     "bcryptjs": "^2.4.3",
     "cron-parser": "^5.5.0",
-    "crypto": "^1.0.1",
-    "googleapis": "^137.1.0",
-    "joi": "^17.11.0",
+    "fastify": "^5.2.1",
+    "fastify-plugin": "^5.0.1",
     "jose": "^5.2.0",
-    "jsonwebtoken": "^9.0.2",
+    "jsonwebtoken": "^9.0.3",
     "moment-timezone": "^0.5.46",
-    "mongoose": "^8.0.3",
-    "next": "^14.2.3",
-    "nextjs-cors": "^2.2.0",
-    "nodemailer": "^6.9.8",
-    "react": "^18",
-    "react-dom": "^18",
-    "react-email": "1.10.1",
-    "resend": "^2.1.0"
+    "mongoose": "^9.7.0",
+    "pg": "^8.21.0",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "resend": "^6.12.4",
+    "tsx": "^4.19.2"
   },
   "devDependencies": {
     "@babel/plugin-transform-private-methods": "^7.27.1",
@@ -41,7 +35,11 @@
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "eslint": "^8",
-    "eslint-config-next": "14.0.4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.1.8"
+  },
+  "overrides": {
+    "@tootallnate/once": "^2.0.1",
+    "form-data": "^2.5.4"
   }
 }

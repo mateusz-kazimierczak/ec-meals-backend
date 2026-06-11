@@ -1,13 +1,8 @@
-import { unstable_cache } from "next/cache";
-import connectDB from "./db/connect";
-import { Settings } from "./db/models/Settings";
+import connectDB from "./db/connect.js";
+import { Settings } from "./db/models/Settings.js";
 
-export const getSetting = unstable_cache(
-  async (key) => {
-    await connectDB();
-    const doc = await Settings.findById(key).lean();
-    return doc ?? null;
-  },
-  ["setting"],
-  { tags: ["settings"] },
-);
+export const getSetting = async (key) => {
+  await connectDB();
+  const doc = await Settings.findById(key).lean();
+  return doc ?? null;
+};

@@ -1,0 +1,47 @@
+services:
+  ec-meals-backend:
+    build:
+      context: .
+    container_name: ec-meals-backend
+    restart: unless-stopped
+    env_file:
+      - ../.env
+    depends_on:
+      - mongodb
+    expose:
+      - "3000"
+    networks:
+      - proxy
+      - db_internal
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=proxy"
+      - "traefik.http.routers.ec-meals-backend.rule=PathPrefix(`/ec-meals-api`)"
+      - "traefik.http.routers.ec-meals-backend.entrypoints=web"
+      - "traefik.http.routers.ec-meals-backend.service=ec-meals-backend"
+      - "traefik.http.routers.ec-meals-backend.priority=250"
+      - "traefik.http.routers.ec-meals-backend.middlewares=ec-meals-backend-strip"
+      - "traefik.http.middlewares.ec-meals-backend-strip.stripprefix.prefixes=/ec-meals-api"
+      - "traefik.http.services.ec-meals-backend.loadbalancer.server.port=3000"
+
+  mongodb:
+    image: mongo:7
+    container_name: ec-meals-mongodb
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
+      MONGO_INITDB_DATABASE: ${MONGO_INITDB_DATABASE}
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - db_internal
+
+networks:
+  proxy:
+    external: true
+  db_internal:
+    external: true
+
+volumes:
+  mongodb_data:

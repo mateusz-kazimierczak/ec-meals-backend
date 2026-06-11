@@ -1,9 +1,7 @@
-import { min } from "moment-timezone";
+import mongoose from "mongoose";
+import { defaultNotificationPreferences } from "../../../domain/notificationDefaults.js";
 
-import { defaultNotificationPreferences } from '../../../app/api/preferences/notifications/defaults'
-
-const mongoose = require("mongoose");
-const Schema = mongoose.Schema;
+const { Schema } = mongoose;
 
 const schema = new Schema(
   {

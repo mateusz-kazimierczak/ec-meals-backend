@@ -1,7 +1,7 @@
 import bcrypt from "bcryptjs";
-import User from "../db/models/User";
-import connectDB from "../db/connect";
-import initUser from "./initUser";
+import User from "../db/models/User.js";
+import connectDB from "../db/connect.js";
+import initUser from "./initUser.js";
 
 export default async function initAdmin() {
   await connectDB();

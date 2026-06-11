@@ -1,0 +1,47 @@
+name: Deploy Backend
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: tailscale/github-action@v4
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:ci
+
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H "${{ secrets.SERVER_HOST || '100.125.228.78' }}" >> ~/.ssh/known_hosts
+
+      - name: Deploy on server
+        env:
+          SERVER_HOST: ${{ secrets.SERVER_HOST || '100.125.228.78' }}
+          SERVER_USER: ${{ secrets.SERVER_USER || 'ec' }}
+          BACKEND_ENV: ${{ secrets.EC_MEALS_BACKEND_ENV }}
+        run: |
+          ssh "${SERVER_USER}@${SERVER_HOST}" 'mkdir -p /opt/homelab/stacks/ec-meals-backend'
+          printf '%s\n' "${BACKEND_ENV}" | ssh "${SERVER_USER}@${SERVER_HOST}" 'cat > /opt/homelab/stacks/ec-meals-backend/.env'
+          ssh "${SERVER_USER}@${SERVER_HOST}" <<'EOF'
+          set -euo pipefail
+          cd /opt/homelab/stacks/ec-meals-backend
+          if [ ! -d repo/.git ]; then
+            git clone https://github.com/mateusz-kazimierczak/ec-meals-backend.git repo
+          fi
+          cd repo
+          git pull --ff-only origin main
+          docker compose -f compose.yml up -d --build
+          EOF

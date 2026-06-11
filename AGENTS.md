@@ -1,64 +1,72 @@
-# EC Meals Backend — CLAUDE.md
+# EC Meals Backend Agent Guide
 
-## Project Overview
-Next.js 14 API backend for the EC Meals system. Handles authentication, meal scheduling, user management, push notifications, and a daily automated cron job that emails meal summaries and logs to BigQuery.
+## Current Architecture
 
-## Tech Stack
-- **Framework**: Next.js 14 (App Router, API routes only)
-- **Database**: MongoDB via Mongoose
-- **Auth**: JWT (jose in middleware, jsonwebtoken in routes) + bcryptjs
-- **Email**: Resend + React Email components
-- **Analytics/Audit**: Google BigQuery
-- **Deployment**: Vercel (with built-in cron support)
+This repository is the Fastify backend for EC Meals. Do not reintroduce Next.js API routes, Next middleware, or Next runtime assumptions.
 
-## Key Files
-- `src/app/api/` — All API route handlers
-- `src/middleware.js` — JWT verification; injects `userID` and `userRole` into response headers
-- `src/_helpers/db/connect.js` — Mongoose connection with global caching
-- `src/_helpers/db/models/` — Mongoose schemas: `User`, `Day`, `Diet`
-- `src/_helpers/time.js` — Timezone utilities (all logic uses America/Toronto)
-- `src/_helpers/emails.jsx` — Email sending helpers using Resend
-- `emails/` — React Email templates (`DailyEmail.jsx`, `WelcomeEmail.jsx`)
-- `.env.local` — All secrets
+- `src/app.js` builds the Fastify app and registers routes.
+- `src/server.js` starts the HTTP server.
+- `src/plugins/auth.js` enforces JWT and role-based access by route prefix.
+- `src/routes/` contains route modules grouped by domain.
+- `src/_helpers/db/models/` contains MongoDB/Mongoose models.
+- `src/_helpers/postgres.js` owns PostgreSQL pooling and idempotent schema setup.
+- `src/_helpers/mealHistory.js` and `src/_helpers/userSettingsAudit.js` write/read PostgreSQL audit data.
+- `src/_helpers/time.js` contains Toronto-time meal scheduling logic.
 
-## Environment Variables
-| Variable | Purpose |
-|---|---|
-| `MONGODB_URI` | MongoDB Atlas connection string |
-| `JWT_SECRET` | JWT signing secret |
-| `ADMIN_USERNAME` / `ADMIN_PASSWORD` / `ADMIN_EMAIL` | Initial admin credentials |
-| `UPDATE_TIME` | Daily schedule cutoff time in HHMM (legacy fallback if DB schedule config is absent) |
-| `RESEND_API_KEY` | Resend email API key |
-| `ENABLE_EMAIL` | `true` / `false` to toggle emails |
-| `GCP_AUTH` | Google Cloud service account JSON (stringified) |
-| `CLIENT_ID` / `CLIENT_SECRET` | Google OAuth credentials |
+The frontend expects the existing `/api/...` contract. In production, Traefik/Tailscale exposes the backend at `/ec-meals-api` and strips that prefix before requests reach Fastify.
 
-## Running Locally
+## Data Stores
+
+Production uses local containers:
+
+- MongoDB service: `ec-meals-mongodb`
+- Mongo database: `ec_meals`
+- PostgreSQL container: existing `postgres`
+- PostgreSQL database: `ec_meals`
+
+Tests use isolated databases:
+
+- Mongo database: `ec_meals_test`
+- PostgreSQL database: `ec_meals_test`
+
+Never point tests at production database URLs. Tests must use `MONGODB_URI_TEST` and `POSTGRES_URL_TEST` via `.env.test.local`.
+
+## Development Commands
+
+The host may not have Node installed. Prefer Docker-based commands:
+
 ```bash
-npm run dev     # Start dev server on port 3000 with Node inspector
-npm run build   # Production build
-npm run start   # Start production server
-npm run email   # React Email dev server
+docker run --rm -v /home/ec/ec-meals-backend:/app -w /app node:22-alpine npm run build
+docker run --rm -v /home/ec/ec-meals-backend:/app -w /app node:22-alpine npm run lint
+docker run --rm --network db_internal -v /home/ec/ec-meals-backend:/app -w /app node:22-alpine npm test
+docker run --rm -v /home/ec/ec-meals-backend:/app -w /app node:22-alpine npm audit --omit=dev
 ```
 
-## API Endpoints Summary
-| Method | Path | Auth | Description |
-|---|---|---|---|
-| POST | `/api/auth` | None | Login → JWT |
-| GET/POST | `/api/meals` | User | Get/set meal preferences |
-| POST/PATCH/DELETE | `/api/day` | User/Admin | Daily meal report |
-| GET | `/api/users/all` | Admin | List all users |
-| GET/PATCH | `/api/users/single` | User | Get/update user |
-| GET/PATCH | `/api/preferences` | User | User preferences |
-| POST | `/api/preferences/notifications/addDevice` | User | Register push token |
-| GET/POST/DELETE | `/api/diets` | Admin | Diet management |
-| GET | `/api/logs` | User | Change logs |
-## Architecture Notes
-- **Meal matrix**: Users store a 7-day × 7-slot matrix. Indices 0-2 = B/L/D, 3-5 = packed P1/P2/PS, 6 = no-meals flag
-- **Timezone**: All date/time logic hardcoded to `America/Toronto` via `moment-timezone`
-- **Hybrid storage**: User preferences in MongoDB; meal change history in BigQuery (`ec-meals-462913.meal_history.HISTORY`)
-- **Predictive vs historical**: Future dates → compute from user matrices; past dates → return stored Day documents
-- **Middleware**: Protected routes checked in `src/middleware.js`; role check (admin) done inline in route handlers
+The test command needs `--network db_internal` so the `mongodb` and `postgres` Docker DNS names resolve.
 
-## Known Issues / TODOs (from README)
-- Email sending can time out on Vercel's serverless function limit
+## Testing Expectations
+
+- Use Fastify `app.inject()`; do not open real ports in tests.
+- Reset test Mongo and Postgres data before each test.
+- Use fake timers for date-sensitive day/home logic.
+- Mock all external calls by default. Real Mailchimp, Airflow, Resend, or arbitrary network calls must not happen in tests.
+- Add or update route tests whenever API behavior changes.
+
+## Documentation Expectations
+
+When adding or changing a feature, update documentation in the same change:
+
+- Update `README.md` when public behavior, env vars, deployment, or API contracts change.
+- Update `docs/testing.md` when test setup, helpers, fixtures, or commands change.
+- Update this `AGENTS.md` when architecture, operational assumptions, data stores, or agent workflow changes.
+- Document new environment variables with purpose, required/optional status, and whether they are production-only or test-only.
+
+If a route response shape changes, mention frontend compatibility risk explicitly. The existing Expo/Vercel frontend depends on current field names, including BigQuery-compatible log fields such as `CHANGE_TIME.value`.
+
+## Operational Notes
+
+- Keep `INTERNAL_API_SECRET` configured for public deployments.
+- Keep production and test databases separate.
+- PostgreSQL schema creation is app-driven and idempotent through `ensurePostgresSchema()`.
+- Mailchimp activity routes depend on Mailchimp env vars at module import time.
+- Day/home logic is timezone-sensitive and should be reasoned about in `America/Toronto`.

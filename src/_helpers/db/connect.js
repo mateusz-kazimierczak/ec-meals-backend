@@ -1,13 +1,5 @@
 import mongoose from "mongoose";
 
-const DATABASE_URL = process.env.MONGODB_URI;
-
-if (!DATABASE_URL) {
-  throw new Error(
-    "Please define the DATABASE_URL environment variable inside .env.local"
-  );
-}
-
 let cached = global.mongoose;
 
 if (!cached) {
@@ -15,6 +7,11 @@ if (!cached) {
 }
 
 export default async function connectDB() {
+  const databaseUrl = process.env.MONGODB_URI;
+  if (!databaseUrl) {
+    throw new Error("Please define the MONGODB_URI environment variable.");
+  }
+
   if (cached.conn) {
     return cached.conn;
   }
@@ -25,12 +22,7 @@ export default async function connectDB() {
     };
 
     cached.promise = mongoose
-      .connect(DATABASE_URL, {
-        authSource: "admin",
-        user: "admin",
-        pass: "admin",
-        ...opts,
-      })
+      .connect(databaseUrl, opts)
       .then((mongoose) => {
         console.log("Connected to MongoDB");
         return mongoose;
