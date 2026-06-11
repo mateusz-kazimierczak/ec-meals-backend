@@ -33,6 +33,16 @@ describe("internal routes", () => {
     delete process.env.INTERNAL_API_SECRET;
   });
 
+  it("fails closed when the internal secret is not configured", async () => {
+    const app = await buildTestApp();
+    delete process.env.INTERNAL_API_SECRET;
+
+    const result = await injectJson(app, { url: "/api/internal/init" });
+
+    expect(result.statusCode).toBe(503);
+    expect(result.body).toEqual({ message: "Internal API is not configured" });
+  });
+
   it("adds default notification preferences to all users", async () => {
     const app = await buildTestApp();
     process.env.INTERNAL_API_SECRET = "internal-secret";

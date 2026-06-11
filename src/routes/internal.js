@@ -6,7 +6,11 @@ import { defaultNotificationPreferences } from "../domain/notificationDefaults.j
 
 const requireInternalSecret = (request, reply) => {
   const expected = process.env.INTERNAL_API_SECRET;
-  if (!expected) return true;
+  if (!expected) {
+    request.log.error("INTERNAL_API_SECRET is not configured");
+    reply.code(503).send({ message: "Internal API is not configured" });
+    return false;
+  }
   if (request.headers["x-internal-secret"] === expected) return true;
   reply.code(401).send({ message: "Unauthorized" });
   return false;
@@ -15,15 +19,15 @@ const requireInternalSecret = (request, reply) => {
 export default async function internalRoutes(app) {
   app.get("/api/internal/init", async (request, reply) => {
     if (!requireInternalSecret(request, reply)) return undefined;
-    await initAdmin();
-    return { message: "Admin user created" };
+    const result = await initAdmin();
+    return { message: result.created ? "Admin user created" : "Admin user already present" };
   });
 
   app.get("/api/setup", async (request, reply) => {
     if (!requireInternalSecret(request, reply)) return undefined;
-    await initAdmin();
+    const result = await initAdmin();
     const users = await User.find();
-    return { message: "Admin created!", users };
+    return { message: result.created ? "Admin created!" : "Admin already present!", users };
   });
 
   app.get("/api/internal/tasks/add_notifications_preferences_to_all_users", async (request, reply) => {

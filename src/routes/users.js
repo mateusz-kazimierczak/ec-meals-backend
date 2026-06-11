@@ -73,6 +73,37 @@ const buildUser = async (input) => {
   return user;
 };
 
+const buildUserUpdate = async (input) => {
+  const data = { ...input };
+  const update = {};
+
+  if (data.birthday) {
+    const [day, month] = data.birthday.split("/").map((value) => parseInt(value, 10));
+    update.birthdayDay = day || null;
+    update.birthdayMonth = month || null;
+  }
+
+  [
+    "firstName",
+    "lastName",
+    "email",
+    "room",
+    "role",
+    "active",
+    "guest",
+    "diet",
+  ].forEach((field) => {
+    if (Object.prototype.hasOwnProperty.call(data, field)) update[field] = data[field];
+  });
+
+  if (Object.prototype.hasOwnProperty.call(data, "username")) {
+    update.username = data.username?.toLowerCase().trim();
+  }
+
+  if (data.password) update.hash = await bcrypt.hash(data.password, 10);
+  return update;
+};
+
 const requestedUserId = (request) => {
   const userId = getHeader(request, "user_id");
   return !userId || userId === "undefined" ? request.user.id : userId;
@@ -96,10 +127,10 @@ export default async function usersRoutes(app) {
     const userId = requestedUserId(request);
     const beforeUser = await User.findById(userId, "firstName lastName username email role room active guest diet birthdayDay birthdayMonth").lean();
     const before = userAuditSnapshot(beforeUser);
-    const user = await buildUser(request.body || {});
-    const passwordChanged = Boolean(user.hash);
+    const userUpdate = await buildUserUpdate(request.body || {});
+    const passwordChanged = Boolean(userUpdate.hash);
 
-    await User.findOneAndUpdate({ _id: userId }, user);
+    await User.findOneAndUpdate({ _id: userId }, { $set: userUpdate });
 
     const afterUser = await User.findById(userId, "firstName lastName username email role room active guest diet birthdayDay birthdayMonth").lean();
     const diff = buildAuditRowDiff(before, userAuditSnapshot(afterUser), userAuditFields);

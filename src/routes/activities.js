@@ -2,11 +2,9 @@ import connectDB from "../_helpers/db/connect.js";
 import Activity from "../_helpers/db/models/Activity.js";
 import User from "../_helpers/db/models/User.js";
 import {
-  MC_KEY,
-  MC_LIST_ID,
-  MC_TEMPLATE_ID,
-  MC_FROM_NAME,
-  MC_REPLY_TO,
+  getMailchimpConfig,
+  hasCampaignConfig,
+  hasUploadConfig,
   mcHeaders,
   mcUrl,
   buildEmailContent,
@@ -31,7 +29,8 @@ export default async function activitiesRoutes(app) {
   });
 
   app.post("/api/activities", async (request, reply) => {
-    if (!MC_KEY || !MC_REPLY_TO) {
+    const mailchimp = getMailchimpConfig();
+    if (!hasCampaignConfig(mailchimp)) {
       return reply.code(503).send({ error: "Missing MAILCHIMP_API_KEY or MAILCHIMP_REPLY_TO in environment" });
     }
 
@@ -40,36 +39,36 @@ export default async function activitiesRoutes(app) {
       return reply.code(400).send({ error: "Title, body, and activityDate are required" });
     }
 
-    const createRes = await fetch(mcUrl("/campaigns"), {
+    const createRes = await fetch(mcUrl("/campaigns", mailchimp), {
       method: "POST",
-      headers: mcHeaders(),
+      headers: mcHeaders(mailchimp),
       body: JSON.stringify({
         type: "regular",
-        recipients: { list_id: MC_LIST_ID },
+        recipients: { list_id: mailchimp.listId },
         settings: {
           subject_line: title.trim(),
           title: title.trim(),
-          from_name: MC_FROM_NAME,
-          reply_to: MC_REPLY_TO,
+          from_name: mailchimp.fromName,
+          reply_to: mailchimp.replyTo,
         },
       }),
     });
     const campaign = await createRes.json();
     if (!createRes.ok) return reply.code(createRes.status).send({ error: campaign.detail || "Failed to create campaign" });
 
-    const contentRes = await fetch(mcUrl(`/campaigns/${campaign.id}/content`), {
+    const contentRes = await fetch(mcUrl(`/campaigns/${campaign.id}/content`, mailchimp), {
       method: "PUT",
-      headers: mcHeaders(),
+      headers: mcHeaders(mailchimp),
       body: JSON.stringify({
         template: {
-          id: MC_TEMPLATE_ID,
+          id: mailchimp.templateId,
           sections: { email_content: buildEmailContent(title.trim(), body) },
         },
       }),
     });
     const contentData = await contentRes.json();
     if (!contentRes.ok) {
-      await fetch(mcUrl(`/campaigns/${campaign.id}`), { method: "DELETE", headers: mcHeaders() });
+      await fetch(mcUrl(`/campaigns/${campaign.id}`, mailchimp), { method: "DELETE", headers: mcHeaders(mailchimp) });
       return reply.code(contentRes.status).send({ error: contentData.detail || "Failed to set campaign content" });
     }
 
@@ -87,14 +86,15 @@ export default async function activitiesRoutes(app) {
   });
 
   app.post("/api/activities/upload-image", async (request, reply) => {
-    if (!MC_KEY) return reply.code(503).send({ error: "Mailchimp not configured" });
+    const mailchimp = getMailchimpConfig();
+    if (!hasUploadConfig(mailchimp)) return reply.code(503).send({ error: "Mailchimp not configured" });
 
     const { name, data } = request.body || {};
     if (!name || !data) return reply.code(400).send({ error: "name and data are required" });
 
-    const res = await fetch(mcUrl("/file-manager/files"), {
+    const res = await fetch(mcUrl("/file-manager/files", mailchimp), {
       method: "POST",
-      headers: mcHeaders(),
+      headers: mcHeaders(mailchimp),
       body: JSON.stringify({ name, file_data: data }),
     });
     const result = await res.json();
@@ -123,22 +123,34 @@ export default async function activitiesRoutes(app) {
   app.patch("/api/activities/:id", async (request, reply) => {
     const { id } = request.params;
     const { title, body, activityDate, activityName } = request.body || {};
+    const mailchimp = getMailchimpConfig();
+
+    await connectDB();
+    const activity = await Activity.findOne({ mailchimpId: id });
+    if (!activity) return reply.code(404).send({ error: "Activity not found" });
+    if ((title || body) && !hasCampaignConfig(mailchimp)) {
+      return reply.code(503).send({ error: "Missing MAILCHIMP_API_KEY or MAILCHIMP_REPLY_TO in environment" });
+    }
 
     if (title) {
-      await fetch(mcUrl(`/campaigns/${id}`), {
+      const patchRes = await fetch(mcUrl(`/campaigns/${id}`, mailchimp), {
         method: "PATCH",
-        headers: mcHeaders(),
+        headers: mcHeaders(mailchimp),
         body: JSON.stringify({ settings: { title: title.trim(), subject_line: title.trim() } }),
       });
+      if (!patchRes.ok) {
+        const error = await patchRes.json().catch(() => ({}));
+        return reply.code(patchRes.status).send({ error: error.detail || "Failed to update campaign" });
+      }
     }
 
     let html = "";
     if (title && body) {
-      const contentRes = await fetch(mcUrl(`/campaigns/${id}/content`), {
+      const contentRes = await fetch(mcUrl(`/campaigns/${id}/content`, mailchimp), {
         method: "PUT",
-        headers: mcHeaders(),
+        headers: mcHeaders(mailchimp),
         body: JSON.stringify({
-          template: { id: MC_TEMPLATE_ID, sections: { email_content: buildEmailContent(title.trim(), body) } },
+          template: { id: mailchimp.templateId, sections: { email_content: buildEmailContent(title.trim(), body) } },
         }),
       });
       const contentData = await contentRes.json();
@@ -146,7 +158,6 @@ export default async function activitiesRoutes(app) {
       html = contentData.html || "";
     }
 
-    await connectDB();
     const update = {};
     if (title) update.title = title.trim();
     if (body) update.body = body;
@@ -159,13 +170,19 @@ export default async function activitiesRoutes(app) {
 
   app.delete("/api/activities/:id", async (request, reply) => {
     const { id } = request.params;
-    const res = await fetch(mcUrl(`/campaigns/${id}`), { method: "DELETE", headers: mcHeaders() });
+    const mailchimp = getMailchimpConfig();
+
+    await connectDB();
+    const activity = await Activity.findOne({ mailchimpId: id }).lean();
+    if (!activity) return reply.code(404).send({ error: "Activity not found" });
+    if (!hasUploadConfig(mailchimp)) return reply.code(503).send({ error: "Mailchimp not configured" });
+
+    const res = await fetch(mcUrl(`/campaigns/${id}`, mailchimp), { method: "DELETE", headers: mcHeaders(mailchimp) });
     if (!res.ok && res.status !== 204) {
       const error = await res.json().catch(() => ({}));
       return reply.code(res.status).send({ error: error.detail || "Failed to delete" });
     }
 
-    await connectDB();
     await Activity.findOneAndDelete({ mailchimpId: id });
     return { ok: true };
   });
@@ -173,9 +190,16 @@ export default async function activitiesRoutes(app) {
   app.post("/api/activities/:id/send", async (request, reply) => {
     const { schedule_time } = request.body || {};
     const action = schedule_time ? "schedule" : "send";
-    const res = await fetch(mcUrl(`/campaigns/${request.params.id}/actions/${action}`), {
+    const mailchimp = getMailchimpConfig();
+
+    await connectDB();
+    const activity = await Activity.findOne({ mailchimpId: request.params.id }).lean();
+    if (!activity) return reply.code(404).send({ error: "Activity not found" });
+    if (!hasUploadConfig(mailchimp)) return reply.code(503).send({ error: "Mailchimp not configured" });
+
+    const res = await fetch(mcUrl(`/campaigns/${request.params.id}/actions/${action}`, mailchimp), {
       method: "POST",
-      headers: mcHeaders(),
+      headers: mcHeaders(mailchimp),
       body: schedule_time ? JSON.stringify({ schedule_time }) : undefined,
     });
 
@@ -184,7 +208,6 @@ export default async function activitiesRoutes(app) {
       return reply.code(res.status).send({ error: error.detail || `Failed to ${action} campaign` });
     }
 
-    await connectDB();
     await Activity.findOneAndUpdate(
       { mailchimpId: request.params.id },
       { status: schedule_time ? "schedule" : "sent", sendTime: schedule_time ? new Date(schedule_time) : new Date() },
@@ -194,15 +217,21 @@ export default async function activitiesRoutes(app) {
   });
 
   app.post("/api/activities/:id/test", async (request, reply) => {
+    const mailchimp = getMailchimpConfig();
     await connectDB();
-    const user = await User.findById(request.user.id).select("email").lean();
+    const [activity, user] = await Promise.all([
+      Activity.findOne({ mailchimpId: request.params.id }).lean(),
+      User.findById(request.user.id).select("email").lean(),
+    ]);
+    if (!activity) return reply.code(404).send({ error: "Activity not found" });
+    if (!hasUploadConfig(mailchimp)) return reply.code(503).send({ error: "Mailchimp not configured" });
     if (!user?.email) {
       return reply.code(400).send({ error: "No email address found on your account. Ask an admin to add one." });
     }
 
-    const res = await fetch(mcUrl(`/campaigns/${request.params.id}/actions/test`), {
+    const res = await fetch(mcUrl(`/campaigns/${request.params.id}/actions/test`, mailchimp), {
       method: "POST",
-      headers: mcHeaders(),
+      headers: mcHeaders(mailchimp),
       body: JSON.stringify({ test_emails: [user.email], send_type: "html" }),
     });
 

@@ -177,4 +177,34 @@ describe("day routes", () => {
     const updatedUser = await User.findById(student._id).lean();
     expect(updatedUser.meals[0][0]).toBe(false);
   });
+
+  it("validates malformed day requests", async () => {
+    const app = await buildTestApp();
+    const admin = await createUser({ username: "admin", role: "admin" });
+    const token = tokenFor(admin);
+
+    const missingDate = await injectJson(app, {
+      method: "POST",
+      url: "/api/day",
+      token,
+      payload: {},
+    });
+    expect(missingDate.statusCode).toBe(400);
+
+    const invalidUsers = await injectJson(app, {
+      method: "PATCH",
+      url: "/api/day",
+      token,
+      payload: { date: "1/6/2026", meal: "Breakfast", users: ["not-an-id"] },
+    });
+    expect(invalidUsers.statusCode).toBe(400);
+
+    const missingDay = await injectJson(app, {
+      method: "POST",
+      url: "/api/day/removeUser",
+      token,
+      payload: { date: "1/6/2026", userID: "_GUEST_Missing", mealID: 1 },
+    });
+    expect(missingDay.statusCode).toBe(404);
+  });
 });

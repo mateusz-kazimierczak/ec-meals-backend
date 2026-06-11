@@ -18,6 +18,10 @@ import {
 import { getSetting } from "../_helpers/settings.js";
 
 const meals = ["Breakfast", "Lunch", "Dinner", "P1", "P2", "PS"];
+const datePattern = /^\d{1,2}\/\d{1,2}\/\d{4}$/;
+
+const isValidDateString = (date) => typeof date === "string" && datePattern.test(date);
+const isValidObjectId = (value) => mongoose.Types.ObjectId.isValid(value);
 
 const mealUser = (user) => ({
   name: `${user.firstName} ${user.lastName}`,
@@ -84,8 +88,10 @@ const ensureDayShape = (day, date) => {
 };
 
 export default async function dayRoutes(app) {
-  app.post("/api/day", async (request) => {
+  app.post("/api/day", async (request, reply) => {
     const [body] = await Promise.all([Promise.resolve(request.body || {}), connectDB()]);
+    if (!isValidDateString(body.date)) return reply.code(400).send({ message: "Valid date is required" });
+
     const [day, users, scheduleSetting] = await Promise.all([
       Day.findOne({ date: body.date }),
       User.find({ active: true }, "active firstName lastName meals preferences diet skipNotSignedUp"),
@@ -128,8 +134,20 @@ export default async function dayRoutes(app) {
     };
   });
 
-  app.patch("/api/day", async (request) => {
+  app.patch("/api/day", async (request, reply) => {
     const [body] = await Promise.all([Promise.resolve(request.body || {}), connectDB()]);
+    if (!isValidDateString(body.date)) return reply.code(400).send({ message: "Valid date is required" });
+    if (body.guest) {
+      if (!Number.isInteger(body.meal) || body.meal < 0 || body.meal > 5 || !body.guest.name) {
+        return reply.code(400).send({ message: "Valid guest and meal are required" });
+      }
+    } else {
+      if (!Array.isArray(body.users) || body.users.some((user) => !isValidObjectId(user))) {
+        return reply.code(400).send({ message: "Valid users are required" });
+      }
+      if (!meals.includes(body.meal)) return reply.code(400).send({ message: "Valid meal is required" });
+    }
+
     const scheduleSetting = await getSetting("schedule");
     let [day, users] = await Promise.all([
       Day.findOne({ date: body.date }),
@@ -183,13 +201,18 @@ export default async function dayRoutes(app) {
     return { code: "ok" };
   });
 
-  app.post("/api/day/removeUser", async (request) => {
+  app.post("/api/day/removeUser", async (request, reply) => {
     const [body, scheduleSetting] = await Promise.all([Promise.resolve(request.body || {}), getSetting("schedule"), connectDB()]);
+    if (!isValidDateString(body.date)) return reply.code(400).send({ message: "Valid date is required" });
+    if (typeof body.userID !== "string" || !body.userID) return reply.code(400).send({ message: "Valid userID is required" });
+    if (!Number.isInteger(body.mealID) || body.mealID < 0 || body.mealID > 5) return reply.code(400).send({ message: "Valid mealID is required" });
+
     const day = reconstructDate(body.date);
     const today = moment().tz("America/Toronto");
     day.set({ hour: today.hour(), minute: today.minute() });
 
     const dayObject = await Day.findOne({ date: dayString(day) });
+    if (!dayObject) return reply.code(404).send({ message: "Day not found" });
     if (body.userID.startsWith("_GUEST_")) {
       const guestName = body.userID.split("_GUEST_")[1];
       const guestIndex = dayObject.guests.findIndex((guest) => guest.name === guestName);

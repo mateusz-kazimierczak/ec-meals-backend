@@ -25,7 +25,8 @@ const activityEditorPrefixes = ["/api/activities"];
 
 const publicPrefixes = ["/healthz", "/readyz", "/api/auth", "/api/test"];
 
-const startsWithAny = (path, prefixes) => prefixes.some((prefix) => path.startsWith(prefix));
+const matchesPrefix = (path, prefix) => path === prefix || path.startsWith(`${prefix}/`);
+const startsWithAny = (path, prefixes) => prefixes.some((prefix) => matchesPrefix(path, prefix));
 
 async function verifyToken(request) {
   const token = getHeader(request, "authorization");

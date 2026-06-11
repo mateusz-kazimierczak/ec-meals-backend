@@ -91,6 +91,26 @@ describe("user routes", () => {
     expect(auditRows.rows[0].changed_fields).toContain("password");
   });
 
+  it("does not erase unspecified fields during partial user patch", async () => {
+    const app = await buildTestApp();
+    const { admin, student } = await seedUsers();
+
+    const patched = await injectJson(app, {
+      method: "PATCH",
+      url: "/api/users/single",
+      token: tokenFor(admin),
+      headers: { user_id: student._id.toString() },
+      payload: { firstName: "OnlyName" },
+    });
+
+    expect(patched.statusCode).toBe(200);
+    const updated = await User.findById(student._id).lean();
+    expect(updated.firstName).toBe("OnlyName");
+    expect(updated.username).toBe("student");
+    expect(updated.role).toBe("student");
+    expect(updated.email).toBe("student@example.com");
+  });
+
   it("lets admins delete users", async () => {
     const app = await buildTestApp();
     const { admin, student } = await seedUsers();

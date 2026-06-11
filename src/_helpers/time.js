@@ -170,7 +170,6 @@ export const isTodayAndAfterUpdateTime = (date, settings) => { // Fixed
 }
 
 export const isToday = (date) => { // Fixed
-  console.log("Date: ", date);
   return moment().tz("America/Toronto").isSame(date, "day");
 }
 

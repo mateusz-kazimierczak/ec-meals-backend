@@ -38,6 +38,16 @@ describe("authorization", () => {
     expect(body.message).toBe("Unauthorized");
   });
 
+  it("does not classify prefix lookalike paths as protected routes", async () => {
+    const app = await buildTestApp();
+
+    const authLookalike = await injectJson(app, { url: "/api/authentication" });
+    expect(authLookalike.statusCode).toBe(404);
+
+    const dayLookalike = await injectJson(app, { url: "/api/daylight" });
+    expect(dayLookalike.statusCode).toBe(404);
+  });
+
   it("allows activity editors and rejects normal users on activity routes", async () => {
     const app = await buildTestApp();
     const { student, activityEditor } = await seedUsers();
