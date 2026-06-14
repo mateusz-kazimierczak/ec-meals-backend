@@ -10,7 +10,7 @@ import { sendWelcomeEmail } from "@/_helpers/emails";
 import { Types } from "mongoose";
 import { defaultNotificationPreferences } from '../../preferences/notifications/defaults'
 
-const buildUser = async (ujson) => {
+const buildUser = async (ujson, { includeNotificationDefaults = false } = {}) => {
   console.log(ujson);
   // get day adn month as int from the birthday string (format: "dd/mm")
   if (ujson.birthday) {
@@ -30,8 +30,11 @@ const buildUser = async (ujson) => {
     birthdayDay: ujson.birthday?.day || null,
     birthdayMonth: ujson.birthday?.month || null,
     diet: ujson.diet || null,
-    notifications: defaultNotificationPreferences,
   };
+
+  if (includeNotificationDefaults) {
+    user.notifications = defaultNotificationPreferences;
+  }
 
   if (ujson.password) {
     const hash = await bcrypt.hash(ujson.password, 10);
@@ -179,7 +182,7 @@ export async function POST(req, res) {
 
   const data = await req.json();
 
-  const user = await buildUser(data);
+  const user = await buildUser(data, { includeNotificationDefaults: true });
 
   initUser(user);
 
