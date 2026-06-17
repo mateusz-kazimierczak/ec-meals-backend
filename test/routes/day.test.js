@@ -21,7 +21,7 @@ describe("day routes", () => {
     studentMeals[4][3] = true;
     const noMeals = buildMeals();
     noMeals[4][6] = true;
-    const student = await createUser({ username: "student", firstName: "Student", lastName: "One", meals: studentMeals, diet: "vegan" });
+    const user = await createUser({ username: "user", firstName: "Student", lastName: "One", meals: studentMeals, diet: "vegan" });
     const noMealStudent = await createUser({ username: "nomeal", firstName: "No", lastName: "Meals", meals: noMeals });
 
     await createDay({
@@ -41,8 +41,8 @@ describe("day routes", () => {
 
     expect(result.statusCode).toBe(200);
     expect(result.body.status).toBe("prediction");
-    expect(result.body.meals.meals[0].map((user) => user._id)).toContain(student._id.toString());
-    expect(result.body.meals.packedMeals[0].map((user) => user._id)).toContain(student._id.toString());
+    expect(result.body.meals.meals[0].map((user) => user._id)).toContain(user._id.toString());
+    expect(result.body.meals.packedMeals[0].map((user) => user._id)).toContain(user._id.toString());
     expect(result.body.meals.noMeals.map((user) => user._id)).toContain(noMealStudent._id.toString());
     expect(result.body.meals.meals[1]).toContainEqual({ name: "Lunch Guest", diet: "gf", _id: "_GUEST_Lunch Guest" });
     expect(result.body.meals.packedMeals[1]).toContainEqual({ name: "Packed Guest", diet: "veg", _id: "_GUEST_Packed Guest" });
@@ -52,22 +52,22 @@ describe("day routes", () => {
     vi.setSystemTime(new Date("2026-06-10T16:00:00.000Z"));
     const app = await buildTestApp();
     const admin = await createUser({ username: "admin", role: "admin" });
-    const student = await createUser({
-      username: "student",
+    const user = await createUser({
+      username: "user",
       firstName: "Student",
       lastName: "One",
-      preferences: { email: 1, skipNotSignedUp: false },
+      preferences: { skipNotSignedUp: false },
     });
     const skipped = await createUser({
       username: "skipped",
       firstName: "Skipped",
       lastName: "User",
-      preferences: { email: 1, skipNotSignedUp: true },
+      preferences: { skipNotSignedUp: true },
     });
 
     await createDay({
       date: "1/6/2026",
-      meals: [[mealEntryFor(student)], [], []],
+      meals: [[mealEntryFor(user)], [], []],
       packedMeals: [[], [], []],
       noMeals: [mealEntryFor(skipped)],
       unmarked: [],
@@ -83,9 +83,9 @@ describe("day routes", () => {
 
     expect(result.statusCode).toBe(200);
     expect(result.body.status).toBe("final");
-    expect(result.body.meals.meals[0].map((user) => user._id)).toContain(student._id.toString());
+    expect(result.body.meals.meals[0].map((user) => user._id)).toContain(user._id.toString());
     expect(result.body.meals.meals[2]).toContainEqual({ name: "Dinner Guest", diet: "none", _id: "_GUEST_Dinner Guest" });
-    expect(result.body.allUsers.map((user) => user.id)).toContain(student._id.toString());
+    expect(result.body.allUsers.map((user) => user.id)).toContain(user._id.toString());
     expect(result.body.allUsers.map((user) => user.id)).not.toContain(skipped._id.toString());
   });
 
@@ -115,7 +115,7 @@ describe("day routes", () => {
     vi.setSystemTime(new Date("2026-06-10T16:00:00.000Z"));
     const app = await buildTestApp();
     const admin = await createUser({ username: "admin", role: "admin" });
-    const student = await createUser({ username: "student", firstName: "Student", lastName: "One", diet: "vegan" });
+    const user = await createUser({ username: "user", firstName: "Student", lastName: "One", diet: "vegan" });
 
     const result = await injectJson(app, {
       method: "PATCH",
@@ -124,7 +124,7 @@ describe("day routes", () => {
       payload: {
         date: "1/7/2026",
         meal: "Breakfast",
-        users: [student._id.toString()],
+        users: [user._id.toString()],
       },
     });
 
@@ -133,7 +133,7 @@ describe("day routes", () => {
     const day = await Day.findOne({ date: "1/7/2026" }).lean();
     expect(day.meals[0]).toHaveLength(1);
     expect(day.meals[0][0]).toMatchObject({
-      _id: student._id,
+      _id: user._id,
       diet: "vegan",
       name: "Student One",
     });
@@ -145,10 +145,10 @@ describe("day routes", () => {
     const admin = await createUser({ username: "admin", role: "admin" });
     const studentMeals = buildMeals();
     studentMeals[0][0] = true;
-    const student = await createUser({ username: "student", firstName: "Student", lastName: "One", meals: studentMeals });
+    const user = await createUser({ username: "user", firstName: "Student", lastName: "One", meals: studentMeals });
     await createDay({
       date: "1/6/2026",
-      meals: [[mealEntryFor(student)], [], []],
+      meals: [[mealEntryFor(user)], [], []],
       packedMeals: [[], [], []],
       guests: [{ meal: 1, name: "Lunch Guest", diet: "gf" }],
     });
@@ -166,7 +166,7 @@ describe("day routes", () => {
       method: "POST",
       url: "/api/day/removeUser",
       token: tokenFor(admin),
-      payload: { date: "1/6/2026", userID: student._id.toString(), mealID: 0 },
+      payload: { date: "1/6/2026", userID: user._id.toString(), mealID: 0 },
     });
     expect(removedUser.statusCode).toBe(200);
 
@@ -174,7 +174,7 @@ describe("day routes", () => {
     expect(day.guests).toEqual([]);
     expect(day.meals[0]).toEqual([]);
 
-    const updatedUser = await User.findById(student._id).lean();
+    const updatedUser = await User.findById(user._id).lean();
     expect(updatedUser.meals[0][0]).toBe(false);
   });
 

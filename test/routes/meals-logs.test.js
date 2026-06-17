@@ -8,35 +8,35 @@ import { buildMeals, seedUsers, tokenFor } from "../helpers/fixtures.js";
 describe("meal and log routes", () => {
   it("returns meals for the authenticated user", async () => {
     const app = await buildTestApp();
-    const { student } = await seedUsers();
+    const { user } = await seedUsers();
 
     const { statusCode, body } = await injectJson(app, {
       url: "/api/meals",
-      token: tokenFor(student),
+      token: tokenFor(user),
     });
 
     expect(statusCode).toBe(200);
     expect(body.firstName).toBe("Student");
-    expect(body.meals).toEqual(student.meals);
+    expect(body.meals).toEqual(user.meals);
     expect(body.currTime).toEqual(expect.any(Number));
     expect(body.updateTime).toEqual(expect.any(Number));
   });
 
   it("allows admin forUser access and rejects regular forUser access", async () => {
     const app = await buildTestApp();
-    const { admin, student, otherStudent } = await seedUsers();
+    const { admin, user, otherStudent } = await seedUsers();
 
     const allowed = await injectJson(app, {
       url: "/api/meals",
       token: tokenFor(admin),
-      headers: { forUser: student._id.toString() },
+      headers: { forUser: user._id.toString() },
     });
     expect(allowed.statusCode).toBe(200);
     expect(allowed.body.firstName).toBe("Student");
 
     const rejected = await injectJson(app, {
       url: "/api/meals",
-      token: tokenFor(student),
+      token: tokenFor(user),
       headers: { forUser: otherStudent._id.toString() },
     });
     expect(rejected.statusCode).toBe(403);
@@ -45,8 +45,8 @@ describe("meal and log routes", () => {
 
   it("updates meals and writes changed meal history to Postgres", async () => {
     const app = await buildTestApp();
-    const { student } = await seedUsers();
-    const token = tokenFor(student);
+    const { user } = await seedUsers();
+    const token = tokenFor(user);
     const newMeals = buildMeals();
     newMeals[0][0] = true;
 
@@ -58,12 +58,12 @@ describe("meal and log routes", () => {
     });
     expect(updated.statusCode).toBe(200);
 
-    const user = await User.findById(student._id).lean();
-    expect(user.meals).toEqual(newMeals);
+    const savedUser = await User.findById(user._id).lean();
+    expect(savedUser.meals).toEqual(newMeals);
 
-    const history = await getPostgresPool().query("SELECT * FROM meal_history WHERE user_id = $1", [student._id.toString()]);
+    const history = await getPostgresPool().query("SELECT * FROM meal_history WHERE user_id = $1", [user._id.toString()]);
     expect(history.rows).toHaveLength(1);
-    expect(history.rows[0].old_meals).toEqual(student.meals);
+    expect(history.rows[0].old_meals).toEqual(user.meals);
     expect(history.rows[0].new_meals).toEqual(newMeals);
 
     const logs = await injectJson(app, {
@@ -74,7 +74,7 @@ describe("meal and log routes", () => {
     expect(logs.statusCode).toBe(200);
     expect(logs.body.logs).toHaveLength(1);
     expect(logs.body.logs[0]).toMatchObject({
-      USER_ID: student._id.toString(),
+      USER_ID: user._id.toString(),
       IS_SYSTEM_CHANGE: false,
     });
     expect(logs.body.logs[0].CHANGE_TIME.value).toEqual(expect.any(String));
@@ -83,17 +83,17 @@ describe("meal and log routes", () => {
 
   it("does not write duplicate meal history when meals do not change", async () => {
     const app = await buildTestApp();
-    const { student } = await seedUsers();
-    const token = tokenFor(student);
+    const { user } = await seedUsers();
+    const token = tokenFor(user);
 
     await injectJson(app, {
       method: "POST",
       url: "/api/meals",
       token,
-      payload: { meals: student.meals },
+      payload: { meals: user.meals },
     });
 
-    const history = await getPostgresPool().query("SELECT * FROM meal_history WHERE user_id = $1", [student._id.toString()]);
+    const history = await getPostgresPool().query("SELECT * FROM meal_history WHERE user_id = $1", [user._id.toString()]);
     expect(history.rows).toHaveLength(0);
   });
 

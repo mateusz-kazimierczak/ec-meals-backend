@@ -21,7 +21,7 @@ describe("user routes", () => {
         firstName: "New",
         lastName: "User",
         email: "new-user@example.com",
-        role: "student",
+        role: "user",
         active: true,
         birthday: "12/5",
         sendWelcomeEmail: false,
@@ -45,7 +45,7 @@ describe("user routes", () => {
       token,
     });
     expect(self.statusCode).toBe(200);
-    expect(self.body.username).toBe("student");
+    expect(self.body.username).toBe("user");
 
     const other = await injectJson(app, {
       url: "/api/users/single",
@@ -65,12 +65,12 @@ describe("user routes", () => {
       token: tokenFor(admin),
       headers: { user_id: student._id.toString() },
       payload: {
-        username: "student-updated",
+        username: "user-updated",
         password: userPassword,
         firstName: "Updated",
         lastName: "Student",
         email: "updated@example.com",
-        role: "student",
+        role: "user",
         active: true,
         guest: false,
         room: 101,
@@ -83,7 +83,7 @@ describe("user routes", () => {
 
     const updated = await User.findById(student._id).lean();
     expect(updated.firstName).toBe("Updated");
-    expect(updated.username).toBe("student-updated");
+    expect(updated.username).toBe("user-updated");
 
     const auditRows = await getPostgresPool().query("SELECT * FROM user_settings_history WHERE target_user_id = $1", [student._id.toString()]);
     expect(auditRows.rows).toHaveLength(1);
@@ -106,9 +106,9 @@ describe("user routes", () => {
     expect(patched.statusCode).toBe(200);
     const updated = await User.findById(student._id).lean();
     expect(updated.firstName).toBe("OnlyName");
-    expect(updated.username).toBe("student");
-    expect(updated.role).toBe("student");
-    expect(updated.email).toBe("student@example.com");
+    expect(updated.username).toBe("user");
+    expect(updated.role).toBe("user");
+    expect(updated.email).toBe("user@example.com");
   });
 
   it("lets admins delete users", async () => {

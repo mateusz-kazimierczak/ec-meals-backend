@@ -1,33 +1,26 @@
-import connectDB from "../_helpers/db/connect.js";
-import Diet from "../_helpers/db/models/Diet.js";
-import { Settings } from "../_helpers/db/models/Settings.js";
+import { createDiet, deleteDiet, listDiets } from "../data/users.js";
+import { getSetting, upsertSetting } from "../data/settings.js";
 
 export default async function adminRoutes(app) {
   app.get("/api/diets", async () => {
-    await connectDB();
-    const diets = await Diet.find({}).select("name _id");
-    return { message: "OK", data: diets };
+    return { message: "OK", data: await listDiets() };
   });
 
   app.post("/api/diets", async (request) => {
-    await connectDB();
-    const diet = new Diet(request.body || {});
-
     try {
-      const newDietInfo = await diet.save();
+      const newDietInfo = await createDiet(request.body?.name);
       return {
         message: "OK",
-        diet: { name: newDietInfo.name, id: newDietInfo._id },
+        diet: { name: newDietInfo.name, id: newDietInfo.id },
       };
     } catch (error) {
-      return { message: error.code === 11000 ? "DupKey" : "Error" };
+      return { message: error.code === "23505" ? "DupKey" : "Error" };
     }
   });
 
   app.delete("/api/diets", async (request) => {
-    await connectDB();
     try {
-      await Diet.deleteOne({ _id: request.body?.id });
+      await deleteDiet(request.body?.id);
       return { message: "OK" };
     } catch {
       return { message: "Error" };
@@ -38,16 +31,14 @@ export default async function adminRoutes(app) {
     const key = request.query?.key;
     if (!key) return reply.code(400).send({ error: "key param required" });
 
-    await connectDB();
-    return (await Settings.findById(key).lean()) ?? null;
+    return getSetting(key);
   });
 
   app.post("/api/settings", async (request, reply) => {
     const body = request.body || {};
     if (!body._id) return reply.code(400).send({ error: "_id required" });
 
-    await connectDB();
-    await Settings.findByIdAndUpdate(body._id, { $set: body }, { upsert: true, returnDocument: "after" });
+    await upsertSetting(body);
 
     const airflowUrl = (process.env.AIRFLOW_API_URL ?? "").replace(/\/+$/, "");
     if (airflowUrl && process.env.AIRFLOW_USER && process.env.AIRFLOW_PASSWORD) {

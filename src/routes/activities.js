@@ -1,6 +1,11 @@
-import connectDB from "../_helpers/db/connect.js";
-import Activity from "../_helpers/db/models/Activity.js";
-import User from "../_helpers/db/models/User.js";
+import {
+  createActivity,
+  deleteActivity,
+  findActivityByMailchimpId,
+  listActivities,
+  updateActivity,
+} from "../data/activities.js";
+import { findUserById } from "../data/users.js";
 import {
   getMailchimpConfig,
   hasCampaignConfig,
@@ -12,8 +17,7 @@ import {
 
 export default async function activitiesRoutes(app) {
   app.get("/api/activities", async () => {
-    await connectDB();
-    const activities = await Activity.find({}).sort({ createdAt: -1 }).limit(50).lean();
+    const activities = await listActivities();
     return {
       campaigns: activities.map((activity) => ({
         id: activity.mailchimpId,
@@ -72,8 +76,7 @@ export default async function activitiesRoutes(app) {
       return reply.code(contentRes.status).send({ error: contentData.detail || "Failed to set campaign content" });
     }
 
-    await connectDB();
-    await Activity.create({
+    await createActivity({
       mailchimpId: campaign.id,
       title: title.trim(),
       activityName: activityName?.trim() || "",
@@ -104,8 +107,7 @@ export default async function activitiesRoutes(app) {
   });
 
   app.get("/api/activities/:id", async (request, reply) => {
-    await connectDB();
-    const activity = await Activity.findOne({ mailchimpId: request.params.id }).lean();
+    const activity = await findActivityByMailchimpId(request.params.id);
     if (!activity) return reply.code(404).send({ error: "Activity not found" });
 
     return {
@@ -125,8 +127,7 @@ export default async function activitiesRoutes(app) {
     const { title, body, activityDate, activityName } = request.body || {};
     const mailchimp = getMailchimpConfig();
 
-    await connectDB();
-    const activity = await Activity.findOne({ mailchimpId: id });
+    const activity = await findActivityByMailchimpId(id);
     if (!activity) return reply.code(404).send({ error: "Activity not found" });
     if ((title || body) && !hasCampaignConfig(mailchimp)) {
       return reply.code(503).send({ error: "Missing MAILCHIMP_API_KEY or MAILCHIMP_REPLY_TO in environment" });
@@ -163,7 +164,7 @@ export default async function activitiesRoutes(app) {
     if (body) update.body = body;
     if (activityDate) update.activityDate = new Date(activityDate);
     if (activityName !== undefined) update.activityName = activityName?.trim() || "";
-    await Activity.findOneAndUpdate({ mailchimpId: id }, update);
+    await updateActivity(id, update);
 
     return { ok: true, html };
   });
@@ -172,8 +173,7 @@ export default async function activitiesRoutes(app) {
     const { id } = request.params;
     const mailchimp = getMailchimpConfig();
 
-    await connectDB();
-    const activity = await Activity.findOne({ mailchimpId: id }).lean();
+    const activity = await findActivityByMailchimpId(id);
     if (!activity) return reply.code(404).send({ error: "Activity not found" });
     if (!hasUploadConfig(mailchimp)) return reply.code(503).send({ error: "Mailchimp not configured" });
 
@@ -183,7 +183,7 @@ export default async function activitiesRoutes(app) {
       return reply.code(res.status).send({ error: error.detail || "Failed to delete" });
     }
 
-    await Activity.findOneAndDelete({ mailchimpId: id });
+    await deleteActivity(id);
     return { ok: true };
   });
 
@@ -192,8 +192,7 @@ export default async function activitiesRoutes(app) {
     const action = schedule_time ? "schedule" : "send";
     const mailchimp = getMailchimpConfig();
 
-    await connectDB();
-    const activity = await Activity.findOne({ mailchimpId: request.params.id }).lean();
+    const activity = await findActivityByMailchimpId(request.params.id);
     if (!activity) return reply.code(404).send({ error: "Activity not found" });
     if (!hasUploadConfig(mailchimp)) return reply.code(503).send({ error: "Mailchimp not configured" });
 
@@ -208,20 +207,19 @@ export default async function activitiesRoutes(app) {
       return reply.code(res.status).send({ error: error.detail || `Failed to ${action} campaign` });
     }
 
-    await Activity.findOneAndUpdate(
-      { mailchimpId: request.params.id },
-      { status: schedule_time ? "schedule" : "sent", sendTime: schedule_time ? new Date(schedule_time) : new Date() },
-    );
+    await updateActivity(request.params.id, {
+      status: schedule_time ? "schedule" : "sent",
+      sendTime: schedule_time ? new Date(schedule_time) : new Date(),
+    });
 
     return { ok: true, scheduled: !!schedule_time };
   });
 
   app.post("/api/activities/:id/test", async (request, reply) => {
     const mailchimp = getMailchimpConfig();
-    await connectDB();
     const [activity, user] = await Promise.all([
-      Activity.findOne({ mailchimpId: request.params.id }).lean(),
-      User.findById(request.user.id).select("email").lean(),
+      findActivityByMailchimpId(request.params.id),
+      findUserById(request.user.id),
     ]);
     if (!activity) return reply.code(404).send({ error: "Activity not found" });
     if (!hasUploadConfig(mailchimp)) return reply.code(503).send({ error: "Mailchimp not configured" });

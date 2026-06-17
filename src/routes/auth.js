@@ -1,23 +1,14 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import connectDB from "../_helpers/db/connect.js";
-import User from "../_helpers/db/models/User.js";
+import { findUserByUsername } from "../data/users.js";
 
 export default async function authRoutes(app) {
   app.post("/api/auth", async (request, reply) => {
-    try {
-      await connectDB();
-    } catch (error) {
-      return reply.code(500).send({ error: error.message });
-    }
-
     const data = request.body || {};
     const username = data.username?.trim().toLowerCase();
     const password = data.password?.trim();
 
-    const user = await User.findOne({ username })
-      .select("hash username active role preferences notifications")
-      .catch(() => null);
+    const user = await findUserByUsername(username, { includeHash: true }).catch(() => null);
 
     if (!user) return { code: "noUser" };
 
@@ -31,7 +22,7 @@ export default async function authRoutes(app) {
     }
 
     const token = jwt.sign(
-      { id: user._id, role: user.role },
+      { id: user.id, role: user.role },
       process.env.JWT_SECRET,
       { expiresIn: "30d" },
     );

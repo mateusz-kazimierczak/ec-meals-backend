@@ -6,19 +6,23 @@ import { createUser, userPassword } from "../helpers/fixtures.js";
 describe("auth routes", () => {
   it("logs in active users and returns a signed token", async () => {
     const app = await buildTestApp();
-    await createUser({ username: "student", role: "student" });
+    await createUser({ username: "user", role: "user" });
 
     const { statusCode, body } = await injectJson(app, {
       method: "POST",
       url: "/api/auth",
-      payload: { username: " Student ", password: ` ${userPassword} ` },
+      payload: { username: " user ", password: ` ${userPassword} ` },
     });
 
     expect(statusCode).toBe(200);
     expect(body.token).toEqual(expect.any(String));
-    expect(body.username).toBe("student");
-    expect(body.role).toBe("student");
-    expect(body.preferences).toEqual({ email: 1 });
+    expect(body.username).toBe("user");
+    expect(body.role).toBe("user");
+    expect(body.preferences).toEqual({
+      allowNextWeek: false,
+      persistMeals: false,
+      skipNotSignedUp: false,
+    });
     expect(body.device_registered).toBe(false);
   });
 
@@ -37,12 +41,12 @@ describe("auth routes", () => {
 
   it("returns badPass for invalid passwords", async () => {
     const app = await buildTestApp();
-    await createUser({ username: "student" });
+    await createUser({ username: "user" });
 
     const { statusCode, body } = await injectJson(app, {
       method: "POST",
       url: "/api/auth",
-      payload: { username: "student", password: "wrong-password" },
+      payload: { username: "user", password: "wrong-password" },
     });
 
     expect(statusCode).toBe(200);

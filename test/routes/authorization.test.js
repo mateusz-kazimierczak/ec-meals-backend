@@ -27,11 +27,11 @@ describe("authorization", () => {
 
   it("rejects non-admin users on admin routes", async () => {
     const app = await buildTestApp();
-    const { student } = await seedUsers();
+    const { user } = await seedUsers();
 
     const { statusCode, body } = await injectJson(app, {
       url: "/api/diets",
-      token: tokenFor(student),
+      token: tokenFor(user),
     });
 
     expect(statusCode).toBe(401);
@@ -50,11 +50,11 @@ describe("authorization", () => {
 
   it("allows activity editors and rejects normal users on activity routes", async () => {
     const app = await buildTestApp();
-    const { student, activityEditor } = await seedUsers();
+    const { user, activityEditor } = await seedUsers();
 
     const rejected = await injectJson(app, {
       url: "/api/activities",
-      token: tokenFor(student),
+      token: tokenFor(user),
     });
     expect(rejected.statusCode).toBe(401);
 

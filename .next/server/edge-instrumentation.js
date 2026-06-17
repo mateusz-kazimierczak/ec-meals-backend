@@ -1,0 +1,2 @@
+(self.webpackChunk_N_E=self.webpackChunk_N_E||[]).push([[118],{861:(e,n,i)=>{"use strict";async function s(){}i.r(n),i.d(n,{dynamic:()=>t,register:()=>s});let t="force-dynamic"}},e=>{var n=e(e.s=861);(_ENTRIES="undefined"==typeof _ENTRIES?{}:_ENTRIES).middleware_instrumentation=n}]);
+//# sourceMappingURL=edge-instrumentation.js.map

@@ -1,8 +1,5 @@
-import connectDB from "./db/connect.js";
-import { Settings } from "./db/models/Settings.js";
+import { getSetting as getPostgresSetting } from "../data/settings.js";
 
 export const getSetting = async (key) => {
-  await connectDB();
-  const doc = await Settings.findById(key).lean();
-  return doc ?? null;
+  return getPostgresSetting(key);
 };

@@ -46,7 +46,14 @@ describe("internal routes", () => {
   it("adds default notification preferences to all users", async () => {
     const app = await buildTestApp();
     process.env.INTERNAL_API_SECRET = "internal-secret";
-    const first = await createUser({ username: "first", notifications: { device: { token: "old" } } });
+    const first = await createUser({
+      username: "first",
+      notifications: {
+        emailEnabled: true,
+        pushEnabled: true,
+        device: { token: "old" },
+      },
+    });
     const second = await createUser({ username: "second", notifications: null });
 
     const result = await injectJson(app, {
@@ -58,10 +65,26 @@ describe("internal routes", () => {
     expect(result.body).toEqual({ message: "Added default notifications preferences to all users" });
 
     const users = await User.find({ _id: { $in: [first._id, second._id] } }).sort({ username: 1 }).lean();
-    expect(users.map((user) => user.notifications)).toEqual([
-      defaultNotificationPreferences,
-      defaultNotificationPreferences,
+    expect(users.map((user) => ({
+      emailEnabled: user.notifications.emailEnabled,
+      pushEnabled: user.notifications.pushEnabled,
+      rules: user.notifications.rules,
+      windows: user.notifications.windows,
+    }))).toEqual([
+      {
+        emailEnabled: defaultNotificationPreferences.emailEnabled,
+        pushEnabled: defaultNotificationPreferences.pushEnabled,
+        rules: defaultNotificationPreferences.rules,
+        windows: defaultNotificationPreferences.windows,
+      },
+      {
+        emailEnabled: defaultNotificationPreferences.emailEnabled,
+        pushEnabled: defaultNotificationPreferences.pushEnabled,
+        rules: defaultNotificationPreferences.rules,
+        windows: defaultNotificationPreferences.windows,
+      },
     ]);
+    expect(users[0].notifications.device).toEqual({ name: null, token: "old", platform: null });
 
     delete process.env.INTERNAL_API_SECRET;
   });

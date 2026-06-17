@@ -1,9 +1,14 @@
-import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import initUser from "../../src/_helpers/db/initUser.js";
-import Activity from "../../src/_helpers/db/models/Activity.js";
-import Day from "../../src/_helpers/db/models/Day.js";
-import User from "../../src/_helpers/db/models/User.js";
+import { createUser as createPostgresUser } from "../../src/data/users.js";
+import { updateNotificationDevice, updateNotifications, updatePreferences } from "../../src/data/preferences.js";
+import { createActivity as createPostgresActivity } from "../../src/data/activities.js";
+import {
+  addGuestSignup,
+  setNoMeals,
+  setMealSignup,
+  setUserLegacyMatrix,
+} from "../../src/data/mealStore.js";
+import { ALL_MEAL_TYPES } from "../../src/domain/meals.js";
 
 export const userPassword = "correct-password";
 
@@ -19,12 +24,12 @@ export const mealEntryFor = (user) => ({
 
 export const createUser = async (overrides = {}) => {
   const username = overrides.username || `user-${Date.now()}-${Math.random()}`;
-  const user = new User({
+  const user = await createPostgresUser({
     username: username.toLowerCase(),
-    hash: await bcrypt.hash(overrides.password || userPassword, 10),
+    password: overrides.password || userPassword,
     firstName: overrides.firstName || "Test",
     lastName: overrides.lastName || "User",
-    role: overrides.role || "student",
+    role: overrides.role || "user",
     email: overrides.email || `${username}@example.com`,
     active: overrides.active ?? true,
     room: overrides.room,
@@ -34,44 +39,70 @@ export const createUser = async (overrides = {}) => {
     birthdayMonth: overrides.birthdayMonth,
   });
 
-  initUser(user);
-  if (overrides.meals) user.meals = overrides.meals;
-  if (overrides.preferences) user.preferences = overrides.preferences;
-  if (overrides.notifications !== undefined) user.notifications = overrides.notifications;
-
-  await user.save();
+  if (overrides.preferences) await updatePreferences(user.id, overrides.preferences, { isAdmin: true });
+  if (overrides.notifications !== undefined) {
+    await updateNotifications(user.id, overrides.notifications || {});
+    if (overrides.notifications?.device) await updateNotificationDevice(user.id, overrides.notifications.device);
+  }
+  if (overrides.meals) await setUserLegacyMatrix(user.id, overrides.meals);
+  user.meals = overrides.meals || buildMeals();
+  user._id = user.id;
   return user;
 };
 
 export const seedUsers = async () => {
   const [admin, student, otherStudent, activityEditor] = await Promise.all([
     createUser({ username: "admin", firstName: "Admin", role: "admin" }),
-    createUser({ username: "student", firstName: "Student", role: "student" }),
-    createUser({ username: "other", firstName: "Other", role: "student" }),
+    createUser({ username: "user", firstName: "Student", role: "user" }),
+    createUser({ username: "other", firstName: "Other", role: "user" }),
     createUser({ username: "editor", firstName: "Editor", role: "activity_editor" }),
   ]);
 
-  return { admin, student, otherStudent, activityEditor };
+  return { admin, student, user: student, otherStudent, activityEditor };
 };
 
 export const tokenFor = (user) => jwt.sign(
-  { id: user._id.toString(), role: user.role },
+  { id: user.id || user._id.toString(), role: user.role },
   process.env.JWT_SECRET,
   { expiresIn: "1h" },
 );
 
 export const authHeadersFor = (user) => ({ authorization: tokenFor(user) });
 
-export const createDay = async (overrides = {}) => Day.create({
-  date: overrides.date,
-  meals: overrides.meals ?? [[], [], []],
-  packedMeals: overrides.packedMeals ?? [[], [], []],
-  noMeals: overrides.noMeals ?? [],
-  unmarked: overrides.unmarked ?? [],
-  guests: overrides.guests ?? [],
-});
+export const createDay = async (overrides = {}) => {
+  const allMeals = [...(overrides.meals ?? [[], [], []]), ...(overrides.packedMeals ?? [[], [], []])];
+  for (let mealIndex = 0; mealIndex < allMeals.length; mealIndex += 1) {
+    for (const entry of allMeals[mealIndex]) {
+      if (entry._id && !String(entry._id).startsWith("_GUEST_")) {
+        await setMealSignup({
+          userId: entry._id.toString(),
+          date: overrides.date,
+          mealType: ALL_MEAL_TYPES[mealIndex],
+          status: "attending",
+          source: "admin",
+        });
+      }
+    }
+  }
+  for (const guest of overrides.guests ?? []) {
+    await addGuestSignup({
+      date: overrides.date,
+      mealType: ALL_MEAL_TYPES[guest.meal],
+      guest,
+      actorId: null,
+    });
+  }
+  for (const entry of overrides.noMeals ?? []) {
+    await setNoMeals({
+      userId: entry._id.toString(),
+      date: overrides.date,
+      enabled: true,
+      source: "admin",
+    });
+  }
+};
 
-export const createActivity = async (overrides = {}) => Activity.create({
+export const createActivity = async (overrides = {}) => createPostgresActivity({
   mailchimpId: overrides.mailchimpId || "campaign-1",
   title: overrides.title || "Activity title",
   activityName: overrides.activityName || "Activity name",

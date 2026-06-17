@@ -7,8 +7,8 @@ Fastify API server powering the EC Meals system. It handles authentication, meal
 | Layer | Technology |
 |---|---|
 | Framework | Fastify |
-| Primary app data | Local MongoDB via Mongoose |
-| Audit/history data | Local PostgreSQL via `pg` |
+| Primary app data | Local PostgreSQL via Drizzle + `pg` |
+| Audit/history data | Local PostgreSQL via Drizzle + `pg` |
 | Auth | JWT via `jose` and `jsonwebtoken` |
 | Email/rendering | Resend + React Email |
 | Activity campaigns | Mailchimp Marketing API |
@@ -19,13 +19,14 @@ Fastify API server powering the EC Meals system. It handles authentication, meal
 
 Production data is local to this server:
 
-- MongoDB container: `ec-meals-mongodb`
-- MongoDB database: `ec_meals`
 - PostgreSQL container: `postgres`
 - PostgreSQL database: `ec_meals`
 
 PostgreSQL stores:
 
+- users, diets, settings, activities
+- meal services, user meal signups, daily no-meals, guest signups
+- notification and general preferences
 - `meal_history`
 - `user_settings_history`
 
@@ -40,7 +41,6 @@ PORT=3000
 HOST=0.0.0.0
 NODE_ENV=production
 
-MONGODB_URI=mongodb://...
 POSTGRES_URL=postgres://...
 
 JWT_SECRET=...
@@ -135,7 +135,7 @@ src/
 ├── routes/                # Native Fastify route modules
 ├── lib/                   # Shared request/audit helpers
 ├── domain/                # Domain defaults/constants
-└── _helpers/              # Mongoose models, email, settings, time, Postgres helpers
+└── _helpers/              # Email, settings, time, and Postgres compatibility helpers
 
 test/
 ├── helpers/               # App/test DB/fixture/mock helpers

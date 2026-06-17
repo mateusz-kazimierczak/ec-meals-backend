@@ -1,10 +1,11 @@
 import moment from "moment-timezone";
-import connectDB from "../_helpers/db/connect.js";
-import User from "../_helpers/db/models/User.js";
 import { logMealChange } from "../_helpers/mealHistory.js";
 import { getNextUpdateTime } from "../_helpers/time.js";
 import { getSetting } from "../_helpers/settings.js";
 import { getHeader } from "../lib/http.js";
+import { findUserById } from "../data/users.js";
+import { getCalendar, getUserLegacyMatrix, setUserLegacyMatrix } from "../data/mealStore.js";
+import { torontoDateKey } from "../domain/meals.js";
 
 const requestedUser = (request, reply) => {
   let forUser = getHeader(request, "forUser");
@@ -17,14 +18,16 @@ const requestedUser = (request, reply) => {
   return forUser;
 };
 
+const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 export default async function mealsRoutes(app) {
   app.get("/api/meals", async (request, reply) => {
-    await connectDB();
     const forUser = requestedUser(request, reply);
     if (!forUser) return undefined;
 
-    const [data, scheduleSetting] = await Promise.all([
-      User.findById(forUser, "meals firstName"),
+    const [data, meals, scheduleSetting] = await Promise.all([
+      uuidPattern.test(forUser) ? findUserById(forUser) : Promise.resolve(null),
+      uuidPattern.test(forUser) ? getUserLegacyMatrix(forUser) : Promise.resolve(null),
       getSetting("schedule"),
     ]);
 
@@ -32,7 +35,7 @@ export default async function mealsRoutes(app) {
 
     const [updateTime, disabledDay] = getNextUpdateTime(scheduleSetting);
     return {
-      meals: data.meals,
+      meals,
       firstName: data.firstName,
       currTime: moment(new Date()).valueOf(),
       updateTime: updateTime.valueOf(),
@@ -41,17 +44,23 @@ export default async function mealsRoutes(app) {
   });
 
   app.post("/api/meals", async (request, reply) => {
-    await connectDB();
     const forUser = requestedUser(request, reply);
     if (!forUser) return undefined;
+    if (!uuidPattern.test(forUser) || !(await findUserById(forUser))) {
+      return reply.code(404).send({ message: "User not found" });
+    }
     const data = request.body || {};
-    const user = await User.findByIdAndUpdate(forUser, { meals: data.meals });
+    const oldMeals = await getUserLegacyMatrix(forUser);
+    await setUserLegacyMatrix(forUser, data.meals, {
+      actorId: request.user.id,
+      source: request.user.id === forUser ? "user" : "admin",
+    });
 
-    if (user && JSON.stringify(user.meals) !== JSON.stringify(data.meals)) {
+    if (JSON.stringify(oldMeals) !== JSON.stringify(data.meals)) {
       try {
         await logMealChange({
           userId: request.user.id,
-          oldMeals: user.meals,
+          oldMeals,
           newMeals: data.meals,
         });
       } catch (error) {
@@ -63,5 +72,11 @@ export default async function mealsRoutes(app) {
       currTime: new Date(),
       updateTime: getNextUpdateTime(),
     };
+  });
+
+  app.get("/api/me/meal-calendar", async (request) => {
+    const from = request.query?.from || torontoDateKey();
+    const to = request.query?.to || moment.tz(from, "YYYY-MM-DD", "America/Toronto").add(6, "days").format("YYYY-MM-DD");
+    return { meals: await getCalendar({ userId: request.user.id, from, to }) };
   });
 }

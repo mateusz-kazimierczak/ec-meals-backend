@@ -4,6 +4,7 @@ import { getHeader, HttpError } from "../lib/http.js";
 
 const protectedPrefixes = [
   "/api/users/single",
+  "/api/me",
   "/api/meals",
   "/api/preferences",
   "/api/preferences/notifications",

@@ -11,8 +11,6 @@ const DaysOfTheWeek = [
 
 export default function InitUser(User) {
   const meals = DaysOfTheWeek.map(() => MealTypes.map(() => false));
-  User.preferences = {
-    email: 1,
-  };
+  User.preferences = {};
   User.meals = meals;
 }

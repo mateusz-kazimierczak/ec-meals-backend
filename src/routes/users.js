@@ -1,16 +1,20 @@
-import bcrypt from "bcryptjs";
-import connectDB from "../_helpers/db/connect.js";
-import User from "../_helpers/db/models/User.js";
-import initUser from "../_helpers/db/initUser.js";
 import { sendWelcomeEmail } from "../_helpers/emails.jsx";
 import { buildAuditRowDiff, logUserSettingsChange } from "../_helpers/userSettingsAudit.js";
 import { defaultNotificationPreferences } from "../domain/notificationDefaults.js";
 import { auditContext } from "../lib/audit.js";
 import { getHeader } from "../lib/http.js";
+import {
+  createUser,
+  deleteUser,
+  findUserById,
+  listUsers,
+  updateUser,
+} from "../data/users.js";
+import { updateNotifications } from "../data/preferences.js";
 
 const cloneDefaults = () => JSON.parse(JSON.stringify(defaultNotificationPreferences));
 
-const notificationFields = ["notificationTypes", "schedule", "schema", "report", "device"];
+const notificationFields = ["emailEnabled", "pushEnabled", "rules", "windows"];
 const userAuditFields = [
   "firstName",
   "lastName",
@@ -26,11 +30,10 @@ const userAuditFields = [
 ];
 
 const notificationSnapshot = (notifications = {}) => ({
-  notificationTypes: notifications.notificationTypes || null,
-  schedule: notifications.schedule || null,
-  schema: notifications.schema || null,
-  report: notifications.report || null,
-  device: notifications.device || null,
+  emailEnabled: notifications.emailEnabled || false,
+  pushEnabled: notifications.pushEnabled || false,
+  rules: notifications.rules || null,
+  windows: notifications.windows || null,
 });
 
 const userAuditSnapshot = (user) => ({
@@ -47,63 +50,6 @@ const userAuditSnapshot = (user) => ({
   birthdayMonth: user?.birthdayMonth ?? null,
 });
 
-const buildUser = async (input) => {
-  const data = { ...input };
-  if (data.birthday) {
-    const [day, month] = data.birthday.split("/").map((value) => parseInt(value, 10));
-    data.birthday = { day, month };
-  }
-
-  const user = {
-    username: data.username?.toLowerCase().trim(),
-    firstName: data.firstName,
-    lastName: data.lastName,
-    email: data.email,
-    room: data.room,
-    role: data.role,
-    active: data.active,
-    guest: data.guest,
-    birthdayDay: data.birthday?.day || null,
-    birthdayMonth: data.birthday?.month || null,
-    diet: data.diet || null,
-    notifications: cloneDefaults(),
-  };
-
-  if (data.password) user.hash = await bcrypt.hash(data.password, 10);
-  return user;
-};
-
-const buildUserUpdate = async (input) => {
-  const data = { ...input };
-  const update = {};
-
-  if (data.birthday) {
-    const [day, month] = data.birthday.split("/").map((value) => parseInt(value, 10));
-    update.birthdayDay = day || null;
-    update.birthdayMonth = month || null;
-  }
-
-  [
-    "firstName",
-    "lastName",
-    "email",
-    "room",
-    "role",
-    "active",
-    "guest",
-    "diet",
-  ].forEach((field) => {
-    if (Object.prototype.hasOwnProperty.call(data, field)) update[field] = data[field];
-  });
-
-  if (Object.prototype.hasOwnProperty.call(data, "username")) {
-    update.username = data.username?.toLowerCase().trim();
-  }
-
-  if (data.password) update.hash = await bcrypt.hash(data.password, 10);
-  return update;
-};
-
 const requestedUserId = (request) => {
   const userId = getHeader(request, "user_id");
   return !userId || userId === "undefined" ? request.user.id : userId;
@@ -111,28 +57,22 @@ const requestedUserId = (request) => {
 
 export default async function usersRoutes(app) {
   app.get("/api/users/all", async () => {
-    await connectDB();
-    return User.find({});
+    return listUsers();
   });
 
   app.get("/api/users/single", async (request, reply) => {
-    await connectDB();
     const userId = requestedUserId(request);
     if (request.user.role !== "admin" && userId !== request.user.id) return reply.code(402).send();
-    return User.findById(userId);
+    return findUserById(userId);
   });
 
   app.patch("/api/users/single", async (request) => {
-    await connectDB();
     const userId = requestedUserId(request);
-    const beforeUser = await User.findById(userId, "firstName lastName username email role room active guest diet birthdayDay birthdayMonth").lean();
+    const beforeUser = await findUserById(userId);
     const before = userAuditSnapshot(beforeUser);
-    const userUpdate = await buildUserUpdate(request.body || {});
-    const passwordChanged = Boolean(userUpdate.hash);
+    const passwordChanged = Boolean(request.body?.password);
 
-    await User.findOneAndUpdate({ _id: userId }, { $set: userUpdate });
-
-    const afterUser = await User.findById(userId, "firstName lastName username email role room active guest diet birthdayDay birthdayMonth").lean();
+    const afterUser = await updateUser(userId, request.body || {});
     const diff = buildAuditRowDiff(before, userAuditSnapshot(afterUser), userAuditFields);
 
     if (diff.changedFields.length > 0 || passwordChanged) {
@@ -153,20 +93,16 @@ export default async function usersRoutes(app) {
   });
 
   app.delete("/api/users/single", async (request, reply) => {
-    await connectDB();
     if (request.user.role !== "admin") return reply.code(402).send();
-    await User.findOneAndDelete({ _id: getHeader(request, "user_id") });
+    await deleteUser(getHeader(request, "user_id"));
     return { success: true };
   });
 
   app.post("/api/users/single", async (request, reply) => {
-    await connectDB();
     const data = request.body || {};
-    const user = await buildUser(data);
-    initUser(user);
 
     try {
-      await User.create(user);
+      await createUser(data);
     } catch (error) {
       request.log.error(error);
       return reply.code(500).send({ success: false });
@@ -183,7 +119,6 @@ export default async function usersRoutes(app) {
   });
 
   app.post("/api/users/batch/notifications", async (request, reply) => {
-    await connectDB();
     if (request.user.role !== "admin") return reply.code(401).send({ message: "Unauthorized" });
 
     const { userIds, notificationPreferences, sectionsToModify } = request.body || {};
@@ -191,29 +126,27 @@ export default async function usersRoutes(app) {
       return reply.code(400).send({ message: "Invalid request" });
     }
 
-    const users = await User.find({ _id: { $in: userIds } }, "_id firstName lastName email notifications");
+    const users = (await Promise.all(userIds.map((id) => findUserById(id)))).filter(Boolean);
     const context = auditContext(request);
 
     await Promise.all(users.map(async (user) => {
-      const existing = typeof user.notifications?.toObject === "function"
-        ? user.notifications.toObject()
-        : user.notifications || {};
+      const existing = user.notifications || {};
       const before = notificationSnapshot(existing);
 
-      user.notifications = { ...cloneDefaults(), ...existing, device: existing.device ?? cloneDefaults().device };
-      if (sectionsToModify.notificationTypes) user.notifications.notificationTypes = notificationPreferences.notificationTypes;
-      if (sectionsToModify.schema) user.notifications.schema = notificationPreferences.schema;
-      if (sectionsToModify.report) user.notifications.report = notificationPreferences.report;
-      if (sectionsToModify.schedule) user.notifications.schedule = notificationPreferences.schedule;
+      const next = { ...cloneDefaults(), ...existing, device: existing.device ?? cloneDefaults().device };
+      if (sectionsToModify.channels) {
+        next.emailEnabled = notificationPreferences.emailEnabled;
+        next.pushEnabled = notificationPreferences.pushEnabled;
+      }
+      if (sectionsToModify.rules) next.rules = notificationPreferences.rules;
+      if (sectionsToModify.windows) next.windows = notificationPreferences.windows;
+      await updateNotifications(user.id, next);
 
-      user.markModified("notifications");
-      await user.save();
-
-      const diff = buildAuditRowDiff(before, notificationSnapshot(user.notifications), notificationFields);
+      const diff = buildAuditRowDiff(before, notificationSnapshot(next), notificationFields);
       if (diff.changedFields.length > 0) {
         await logUserSettingsChange({
           ...context,
-          targetUserId: user._id.toString(),
+          targetUserId: user.id,
           changeType: "NOTIFICATION_PREFERENCES_BATCH_UPDATE",
           changedFields: diff.changedFields,
           oldValues: diff.oldValues,

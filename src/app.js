@@ -1,6 +1,5 @@
 import cors from "@fastify/cors";
 import Fastify from "fastify";
-import connectDB from "./_helpers/db/connect.js";
 import { ensurePostgresSchema } from "./_helpers/postgres.js";
 import authPlugin from "./plugins/auth.js";
 import { HttpError } from "./lib/http.js";
@@ -32,7 +31,7 @@ export function buildApp(options = {}) {
 
   app.get("/healthz", async () => ({ ok: true }));
   app.get("/readyz", async () => {
-    await Promise.all([connectDB(), ensurePostgresSchema()]);
+    await ensurePostgresSchema();
     return { ok: true };
   });
 

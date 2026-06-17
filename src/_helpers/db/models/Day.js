@@ -1,29 +1,20 @@
-import mongoose from "mongoose";
+import { getDaySummary, getGuestsForDate } from "../../../data/mealStore.js";
 
-const { Schema } = mongoose;
-
-const schema = new Schema(
-  {
-    date: { type: String, unique: true, required: true },
-    meals: { type: Object },
-    packedMeals: { type: Object },
-    noMeals: { type: Array },
-    unmarked: { type: Array },
-    guests: { type: Array },
-  },
-  {
-    // add createdAt and updatedAt timestamps
-    timestamps: true,
-  }
-);
-
-schema.set("toJSON", {
-  virtuals: true,
-  versionKey: false,
-  transform: function (doc, ret) {
-    delete ret._id;
-    delete ret.hash;
-  },
+const withLean = (loader) => ({
+  lean: loader,
+  then: (resolve, reject) => loader().then(resolve, reject),
 });
 
-export default mongoose.models.Day || mongoose.model("Day", schema);
+export default {
+  findOne(filter = {}) {
+    return withLean(async () => {
+      if (!filter.date) return null;
+      const summary = await getDaySummary(filter.date);
+      return {
+        date: filter.date,
+        ...summary.meals,
+        guests: await getGuestsForDate(filter.date),
+      };
+    });
+  },
+};

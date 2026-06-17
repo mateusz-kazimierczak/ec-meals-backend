@@ -1,8 +1,8 @@
 import initAdmin from "../_helpers/db/initAdmin.js";
-import connectDB from "../_helpers/db/connect.js";
-import User from "../_helpers/db/models/User.js";
 import { sendWelcomeEmail } from "../_helpers/emails.jsx";
 import { defaultNotificationPreferences } from "../domain/notificationDefaults.js";
+import { listUsers } from "../data/users.js";
+import { updateNotifications } from "../data/preferences.js";
 
 const requireInternalSecret = (request, reply) => {
   const expected = process.env.INTERNAL_API_SECRET;
@@ -26,18 +26,15 @@ export default async function internalRoutes(app) {
   app.get("/api/setup", async (request, reply) => {
     if (!requireInternalSecret(request, reply)) return undefined;
     const result = await initAdmin();
-    const users = await User.find();
+    const users = await listUsers();
     return { message: result.created ? "Admin created!" : "Admin already present!", users };
   });
 
   app.get("/api/internal/tasks/add_notifications_preferences_to_all_users", async (request, reply) => {
     if (!requireInternalSecret(request, reply)) return undefined;
-    await connectDB();
-    const users = await User.find({}, "_id firstName notifications");
+    const users = await listUsers();
     await Promise.all(users.map(async (user) => {
-      user.notifications = defaultNotificationPreferences;
-      user.markModified("notifications");
-      await user.save();
+      await updateNotifications(user.id, defaultNotificationPreferences);
     }));
     return { message: "Added default notifications preferences to all users" };
   });

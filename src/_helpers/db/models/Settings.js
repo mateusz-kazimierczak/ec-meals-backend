@@ -1,7 +1,7 @@
-import mongoose from "mongoose";
+import { upsertSetting } from "../../../data/settings.js";
 
-// strict: false allows any fields; string _id for named categories (e.g. "schedule", "features")
-const schema = new mongoose.Schema({ _id: String }, { strict: false, timestamps: true });
-
-export const Settings = mongoose.models.Settings
-  || mongoose.model("Settings", schema, "settings");
+export const Settings = {
+  async create(body) {
+    return upsertSetting(body);
+  },
+};

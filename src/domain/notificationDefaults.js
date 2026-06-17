@@ -1,21 +1,17 @@
 export const defaultNotificationPreferences = {
-  notificationTypes: {
-    email: false,
+  emailEnabled: false,
+  pushEnabled: false,
+  rules: {
+    missingRegularMeals: Array(7).fill(false),
+    missingPackedMeals: Array(7).fill(false),
+    missingAnyMeals: Array(7).fill(true),
+    fullReport: Array(7).fill(false),
+    reportOnNotifications: Array(7).fill(true),
   },
-  schema: {
-    full_report: Array(7).fill(false),
-    meals: Array(7).fill(false),
-    packed_meals: Array(7).fill(false),
-    any_meals: Array(7).fill(true),
-  },
-  schedule: {
+  windows: {
     morning: Array(7).fill(true),
     noon: Array(7).fill(false),
     evening: Array(7).fill(false),
-  },
-  report: {
-    full_report: Array(7).fill(false),
-    report_on_notifications: Array(7).fill(true),
   },
   device: null,
 };

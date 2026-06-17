@@ -24,7 +24,6 @@ loadEnvFile(path.resolve(".env.test.local"));
 loadEnvFile(path.resolve(".env.test"));
 
 process.env.NODE_ENV = "test";
-process.env.MONGODB_URI = process.env.MONGODB_URI_TEST;
 process.env.POSTGRES_URL = process.env.POSTGRES_URL_TEST;
 
 if (!process.env.JWT_SECRET) {
@@ -36,8 +35,8 @@ process.env.MAILCHIMP_REPLY_TO ??= "activities@example.com";
 process.env.MAILCHIMP_LIST_ID ??= "test-list";
 process.env.MAILCHIMP_TEMPLATE_ID ??= "123";
 
-if (!process.env.MONGODB_URI || !process.env.POSTGRES_URL) {
-  throw new Error("Test database env is missing. Define MONGODB_URI_TEST and POSTGRES_URL_TEST.");
+if (!process.env.POSTGRES_URL) {
+  throw new Error("Test database env is missing. Define POSTGRES_URL_TEST.");
 }
 
 beforeEach(async () => {

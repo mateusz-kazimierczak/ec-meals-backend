@@ -1,21 +1,22 @@
-import mongoose from "mongoose";
 import { closePostgresPool, ensurePostgresSchema, getPostgresPool } from "../../src/_helpers/postgres.js";
-
-export const connectTestMongo = async () => {
-  if (mongoose.connection.readyState === 1) return mongoose.connection;
-  await mongoose.connect(process.env.MONGODB_URI, { bufferCommands: false });
-  return mongoose.connection;
-};
-
-export const resetTestMongo = async () => {
-  await connectTestMongo();
-  await mongoose.connection.dropDatabase();
-};
 
 export const resetTestPostgres = async () => {
   await ensurePostgresSchema();
   await getPostgresPool().query(`
     TRUNCATE TABLE
+      notification_devices,
+      notification_windows,
+      notification_rules,
+      guest_signups,
+      daily_no_meals,
+      meal_signups,
+      meal_services,
+      activities,
+      notification_preferences,
+      user_preferences,
+      users,
+      diets,
+      settings,
       meal_history,
       user_settings_history
     RESTART IDENTITY CASCADE
@@ -23,15 +24,9 @@ export const resetTestPostgres = async () => {
 };
 
 export const resetTestDatabases = async () => {
-  await Promise.all([
-    resetTestMongo(),
-    resetTestPostgres(),
-  ]);
+  await resetTestPostgres();
 };
 
 export const closeTestDatabases = async () => {
-  await Promise.all([
-    mongoose.disconnect(),
-    closePostgresPool(),
-  ]);
+  await closePostgresPool();
 };

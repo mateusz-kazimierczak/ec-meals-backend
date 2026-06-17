@@ -12,7 +12,7 @@ describe("health routes", () => {
     expect(body).toEqual({ ok: true });
   });
 
-  it("returns ready after Mongo and Postgres initialization", async () => {
+  it("returns ready after Postgres initialization", async () => {
     const app = await buildTestApp();
 
     const { statusCode, body } = await injectJson(app, { url: "/readyz" });

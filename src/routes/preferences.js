@@ -1,25 +1,29 @@
-import connectDB from "../_helpers/db/connect.js";
-import User from "../_helpers/db/models/User.js";
 import { buildAuditRowDiff, logUserSettingsChange } from "../_helpers/userSettingsAudit.js";
 import { auditContext } from "../lib/audit.js";
 import { getHeader } from "../lib/http.js";
+import {
+  getNotifications,
+  getPreferences,
+  updateNotificationDevice,
+  updateNotifications,
+  updatePreferences,
+} from "../data/preferences.js";
 
-const preferenceFields = ["email", "allowNextWeek", "persistMeals", "skipNotSignedUp"];
-const notificationFields = ["notificationTypes", "schedule", "schema", "report", "device"];
-const deviceFields = ["notificationTypes", "device"];
+const preferenceFields = ["allowNextWeek", "persistMeals", "skipNotSignedUp"];
+const notificationFields = ["emailEnabled", "pushEnabled", "rules", "windows"];
+const deviceFields = ["device"];
 
 const preferenceSnapshot = (preferences = {}) => ({
-  email: preferences.email || 0,
   allowNextWeek: preferences.allowNextWeek || false,
   persistMeals: preferences.persistMeals || false,
   skipNotSignedUp: preferences.skipNotSignedUp || false,
 });
 
 const notificationSnapshot = (notifications = {}) => ({
-  notificationTypes: notifications.notificationTypes || null,
-  schedule: notifications.schedule || null,
-  schema: notifications.schema || null,
-  report: notifications.report || null,
+  emailEnabled: notifications.emailEnabled || false,
+  pushEnabled: notifications.pushEnabled || false,
+  rules: notifications.rules || null,
+  windows: notifications.windows || null,
   device: notifications.device || null,
 });
 
@@ -37,31 +41,20 @@ const targetUserId = (request, reply) => {
 
 export default async function preferencesRoutes(app) {
   app.get("/api/preferences", async (request, reply) => {
-    await connectDB();
     const id = targetUserId(request, reply);
     if (!id) return undefined;
-    return User.findById(id, "preferences firstName");
+    return getPreferences(id);
   });
 
   app.post("/api/preferences", async (request, reply) => {
-    await connectDB();
     const id = targetUserId(request, reply);
     if (!id) return undefined;
 
     const isAdmin = request.user.role === "admin";
     const pref = request.body || {};
-    const user = await User.findById(id, "preferences");
-    if (!user.preferences) user.preferences = {};
-
-    const before = preferenceSnapshot(user.preferences);
-    user.preferences.email = pref.email;
-    user.preferences.allowNextWeek = pref.allowNextWeek;
-    if (isAdmin) {
-      user.preferences.persistMeals = pref.persistMeals;
-      user.preferences.skipNotSignedUp = pref.skipNotSignedUp;
-    }
-    user.markModified("preferences");
-    await user.save();
+    const current = await getPreferences(id);
+    const before = preferenceSnapshot(current?.preferences);
+    const user = await updatePreferences(id, pref, { isAdmin });
 
     const diff = buildAuditRowDiff(before, preferenceSnapshot(user.preferences), preferenceFields);
     if (diff.changedFields.length > 0) {
@@ -81,29 +74,19 @@ export default async function preferencesRoutes(app) {
   });
 
   app.get("/api/preferences/notifications", async (request, reply) => {
-    await connectDB();
     const id = targetUserId(request, reply);
     if (!id) return undefined;
-    return User.findById(id, "notifications firstName");
+    return getNotifications(id);
   });
 
   app.post("/api/preferences/notifications", async (request, reply) => {
-    await connectDB();
     const id = targetUserId(request, reply);
     if (!id) return undefined;
 
     const pref = request.body || {};
-    const user = await User.findById(id, "notifications");
-    if (!user.notifications) user.notifications = {};
-
-    const before = notificationSnapshot(user.notifications);
-    user.notifications.notificationTypes = pref.notificationTypes;
-    user.notifications.schedule = pref.schedule;
-    user.notifications.schema = pref.schema;
-    user.notifications.report = pref.report;
-    user.notifications.device = pref.device;
-    user.markModified("notifications");
-    await user.save();
+    const current = await getNotifications(id);
+    const before = notificationSnapshot(current?.notifications);
+    const user = await updateNotifications(id, pref);
 
     const diff = buildAuditRowDiff(before, notificationSnapshot(user.notifications), notificationFields);
     if (diff.changedFields.length > 0) {
@@ -123,20 +106,14 @@ export default async function preferencesRoutes(app) {
   });
 
   app.post("/api/preferences/notifications/addDevice", async (request) => {
-    await connectDB();
-    const user = await User.findById(request.user.id, "notifications");
+    const current = await getNotifications(request.user.id);
     const before = {
-      notificationTypes: user.notifications?.notificationTypes || null,
-      device: user.notifications?.device || null,
+      device: current?.notifications?.device || null,
     };
 
-    if (!user.notifications) user.notifications = {};
-    user.notifications.device = request.body?.device;
-    user.markModified("notifications");
-    await user.save();
+    const user = await updateNotificationDevice(request.user.id, request.body?.device);
 
     const diff = buildAuditRowDiff(before, {
-      notificationTypes: user.notifications.notificationTypes || null,
       device: user.notifications.device || null,
     }, deviceFields);
 

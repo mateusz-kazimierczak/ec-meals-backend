@@ -18,15 +18,15 @@ describe("home routes", () => {
     const meals = buildMeals();
     meals[2] = [true, false, true, false, false, false, false];
     meals[3] = [false, true, false, true, false, false, false];
-    const student = await createUser({ username: "student", meals });
+    const user = await createUser({ username: "user", meals });
     await createDay({
       date: "10/6/2026",
-      packedMeals: [[], [mealEntryFor(student)], []],
+      packedMeals: [[], [mealEntryFor(user)], []],
     });
 
     const result = await injectJson(app, {
       url: "/api/home/meals",
-      token: tokenFor(student),
+      token: tokenFor(user),
     });
 
     expect(result.statusCode).toBe(200);
@@ -37,14 +37,14 @@ describe("home routes", () => {
   it("returns upcoming active-user birthdays sorted by days away", async () => {
     vi.setSystemTime(new Date("2026-06-10T16:00:00.000Z"));
     const app = await buildTestApp();
-    const student = await createUser({ username: "student", firstName: "Student", lastName: "Soon", birthdayMonth: 6, birthdayDay: 12 });
+    const user = await createUser({ username: "user", firstName: "Student", lastName: "Soon", birthdayMonth: 6, birthdayDay: 12 });
     await createUser({ username: "later", firstName: "Later", lastName: "User", birthdayMonth: 6, birthdayDay: 20 });
     await createUser({ username: "past", firstName: "Past", lastName: "User", birthdayMonth: 6, birthdayDay: 1 });
     await createUser({ username: "inactive", active: false, birthdayMonth: 6, birthdayDay: 11 });
 
     const result = await injectJson(app, {
       url: "/api/home/birthdays",
-      token: tokenFor(student),
+      token: tokenFor(user),
     });
 
     expect(result.statusCode).toBe(200);
@@ -57,12 +57,12 @@ describe("home routes", () => {
     const app = await buildTestApp();
     const meals = buildMeals();
     meals[3][0] = true;
-    const student = await createUser({ username: "student", firstName: "Student", lastName: "Breakfast", meals, diet: "vegan" });
+    const user = await createUser({ username: "user", firstName: "Student", lastName: "Breakfast", meals, diet: "vegan" });
     await createUser({ username: "inactive", active: false, meals });
 
     const result = await injectJson(app, {
       url: "/api/home/current_meals",
-      token: tokenFor(student),
+      token: tokenFor(user),
     });
 
     expect(result.statusCode).toBe(200);
@@ -70,7 +70,7 @@ describe("home routes", () => {
     expect(result.body.meals).toHaveLength(1);
     expect(result.body.meals[0]).toMatchObject({
       name: "Student Breakfast",
-      id: student._id.toString(),
+      id: user._id.toString(),
       diet: "vegan",
     });
   });
@@ -79,28 +79,28 @@ describe("home routes", () => {
     vi.setSystemTime(new Date("2026-06-10T16:00:00.000Z"));
     const app = await buildTestApp();
     await Settings.create({ _id: "schedule", crons: ["0 8 * * *"] });
-    const student = await createUser({ username: "student", firstName: "Student", lastName: "Lunch" });
+    const user = await createUser({ username: "user", firstName: "Student", lastName: "Lunch" });
     await createDay({
       date: "10/6/2026",
-      meals: [[], [mealEntryFor(student)], []],
+      meals: [[], [mealEntryFor(user)], []],
     });
 
     const result = await injectJson(app, {
       url: "/api/home/current_meals",
-      token: tokenFor(student),
+      token: tokenFor(user),
     });
 
     expect(result.statusCode).toBe(200);
     expect(result.body.meal).toBe("Lunch");
     expect(result.body.currHour).toBe(12);
     expect(result.body.meals).toHaveLength(1);
-    expect(result.body.meals[0]._id).toBe(student._id.toString());
+    expect(result.body.meals[0]._id).toBe(user._id.toString());
   });
 
   it("returns the current activity with first-name replacement", async () => {
     vi.setSystemTime(new Date("2026-06-10T16:00:00.000Z"));
     const app = await buildTestApp();
-    const student = await createUser({ username: "student", firstName: "Student" });
+    const user = await createUser({ username: "user", firstName: "Student" });
     await createActivity({
       title: "Friday Event",
       activityName: "Event",
@@ -111,7 +111,7 @@ describe("home routes", () => {
 
     const result = await injectJson(app, {
       url: "/api/home/current-activity",
-      token: tokenFor(student),
+      token: tokenFor(user),
     });
 
     expect(result.statusCode).toBe(200);
@@ -125,11 +125,11 @@ describe("home routes", () => {
   it("returns null when no current activity matches", async () => {
     vi.setSystemTime(new Date("2026-06-10T16:00:00.000Z"));
     const app = await buildTestApp();
-    const student = await createUser({ username: "student" });
+    const user = await createUser({ username: "user" });
 
     const result = await injectJson(app, {
       url: "/api/home/current-activity",
-      token: tokenFor(student),
+      token: tokenFor(user),
     });
 
     expect(result.statusCode).toBe(200);
